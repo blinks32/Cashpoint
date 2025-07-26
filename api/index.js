@@ -1,6 +1,5 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import { z } from "zod";
 
 // In-memory storage for Vercel (note: this will reset on each deployment)
 class MemStorage {
