@@ -9,7 +9,7 @@ export const accountStatusEnum = pgEnum('account_status', ['active', 'inactive',
 export const transactionTypeEnum = pgEnum('transaction_type', ['deposit', 'withdrawal', 'transfer', 'payment']);
 export const transactionStatusEnum = pgEnum('transaction_status', ['pending', 'completed', 'failed']);
 
-// Users table
+// Users table with comprehensive KYC fields
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -17,10 +17,32 @@ export const users = pgTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   phone: text("phone"),
+  
+  // KYC Personal Details
+  dateOfBirth: text("date_of_birth"),
+  occupation: text("occupation"),
+  sex: text("sex"),
+  maritalStatus: text("marital_status"),
+  
+  // Address Information
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  alternativePhone: text("alternative_phone"),
+  
+  // Identity Documents
+  ssn: text("ssn"),
+  idNumber: text("id_number"),
+  
+  // Emergency Contact
+  nextOfKinName: text("next_of_kin_name"),
+  nextOfKinPhone: text("next_of_kin_phone"),
+  
+  // Status and timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   kycStatus: kycStatusEnum("kyc_status").default('pending'),
-  kycData: text("kyc_data").default('{}'),
 });
 
 // Accounts table

@@ -40,10 +40,10 @@ const Dashboard = () => {
   const [description, setDescription] = useState('');
   const [transferToAccount, setTransferToAccount] = useState('');
 
-  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
-  const checkingAccount = accounts.find(acc => acc.account_type === 'checking');
-  const savingsAccount = accounts.find(acc => acc.account_type === 'savings');
-  const investmentAccount = accounts.find(acc => acc.account_type === 'investment');
+  const totalBalance = accounts.reduce((sum, account) => sum + parseFloat(account.balance || '0'), 0);
+  const checkingAccount = accounts.find(acc => acc.accountType === 'checking');
+  const savingsAccount = accounts.find(acc => acc.accountType === 'savings');
+  const investmentAccount = accounts.find(acc => acc.accountType === 'investment');
 
   const handleDeposit = async () => {
     if (!selectedAccount || !amount || !description) {
@@ -360,21 +360,21 @@ const Dashboard = () => {
                 {accounts.map((account) => (
                   <div key={account.id} className="bg-gray-800 p-6 rounded-xl border border-gray-700">
                     <div className={`bg-gradient-to-r ${
-                      account.account_type === 'checking' ? 'from-blue-500 to-blue-600' :
-                      account.account_type === 'savings' ? 'from-green-500 to-green-600' :
+                      account.accountType === 'checking' ? 'from-blue-500 to-blue-600' :
+                      account.accountType === 'savings' ? 'from-green-500 to-green-600' :
                       'from-purple-500 to-purple-600'
                     } w-full h-32 rounded-lg mb-4 p-4 text-white`}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-sm opacity-80 capitalize">{account.account_type} Account</p>
-                          <p className="text-lg font-mono">****{account.account_number.slice(-4)}</p>
+                          <p className="text-sm opacity-80 capitalize">{account.accountType} Account</p>
+                          <p className="text-lg font-mono">****{account.accountNumber?.slice(-4) || '0000'}</p>
                         </div>
                         <Wallet className="h-6 w-6" />
                       </div>
                       <div className="mt-4">
-                        <p className="text-2xl font-bold">${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                        {account.account_type === 'savings' && <p className="text-sm opacity-80">4.5% APY</p>}
-                        {account.account_type === 'investment' && <p className="text-sm opacity-80">Optional</p>}
+                        <p className="text-2xl font-bold">${parseFloat(account.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                        {account.accountType === 'savings' && <p className="text-sm opacity-80">4.5% APY</p>}
+                        {account.accountType === 'investment' && <p className="text-sm opacity-80">Optional</p>}
                       </div>
                     </div>
                     <div className="flex space-x-2">
@@ -445,7 +445,7 @@ const Dashboard = () => {
                         <div>
                           <p className="text-white font-medium">{transaction.description}</p>
                           <p className="text-gray-400 text-sm">
-                            {new Date(transaction.created_at).toLocaleDateString()} • {transaction.reference_number}
+                            {new Date(transaction.createdAt || transaction.created_at).toLocaleDateString()} • {transaction.referenceNumber || transaction.reference_number}
                           </p>
                         </div>
                       </div>
@@ -453,7 +453,7 @@ const Dashboard = () => {
                         <p className={`font-semibold ${
                           transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
                         }`}>
-                          {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          {transaction.type === 'deposit' ? '+' : '-'}${parseFloat(transaction.amount || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </p>
                         <p className={`text-sm ${
                           transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'

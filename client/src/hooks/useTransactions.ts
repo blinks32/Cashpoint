@@ -25,7 +25,8 @@ export const useTransactions = () => {
 
   const { data: transactions = [], isLoading: loading } = useQuery({
     queryKey: ['/api/transactions', accountIds],
-    enabled: !!user && accounts.length > 0,
+    enabled: !!user && accounts.length > 0 && accountIds.length > 0,
+    queryFn: () => fetch(`/api/transactions?accountIds=${accountIds}`).then(res => res.json()),
   });
 
   const createTransactionMutation = useMutation({

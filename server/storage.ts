@@ -58,7 +58,21 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now,
       kycStatus: 'pending',
-      kycData: '{}'
+      // Ensure all optional fields are properly handled
+      phone: insertUser.phone || null,
+      dateOfBirth: insertUser.dateOfBirth || null,
+      occupation: insertUser.occupation || null,
+      sex: insertUser.sex || null,
+      maritalStatus: insertUser.maritalStatus || null,
+      address: insertUser.address || null,
+      city: insertUser.city || null,
+      state: insertUser.state || null,
+      zipCode: insertUser.zipCode || null,
+      alternativePhone: insertUser.alternativePhone || null,
+      ssn: insertUser.ssn || null,
+      idNumber: insertUser.idNumber || null,
+      nextOfKinName: insertUser.nextOfKinName || null,
+      nextOfKinPhone: insertUser.nextOfKinPhone || null
     };
     this.users.set(id, user);
     return user;
