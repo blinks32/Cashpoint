@@ -94,12 +94,12 @@ const LandingPage = () => {
             >
               Open Account
             </Link>
-            <Link 
-              to="#accounts" 
+            <a 
+              href="#accounts" 
               className="border border-yellow-400 text-yellow-400 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-yellow-400 hover:text-gray-900 transition-all duration-300"
             >
               Learn More
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -130,9 +130,9 @@ const LandingPage = () => {
                     </li>
                   ))}
                 </ul>
-                <button className="w-full bg-yellow-400 text-gray-900 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition-colors">
+                <Link to="/signup" className="block w-full bg-yellow-400 text-gray-900 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition-colors text-center">
                   Get Started
-                </button>
+                </Link>
               </div>
             ))}
           </div>
