@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export interface Account {
-  id: string;
-  user_id: string;
-  account_type: 'checking' | 'savings' | 'investment';
-  account_number: string;
-  balance: number;
-  created_at: string;
-  updated_at: string;
+  id: number;
+  userId: number;
+  accountType: 'checking' | 'savings' | 'investment';
+  accountNumber: string;
+  balance: string;
+  createdAt: string;
+  updatedAt: string;
   status: 'active' | 'inactive' | 'frozen';
 }
 
@@ -27,13 +26,15 @@ export const useAccounts = () => {
 
   const fetchAccounts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+      if (!user) return;
+      
+      const response = await fetch(`/api/accounts/${user.id}`);
+      const data = await response.json();
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch accounts');
+      }
+
       setAccounts(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch accounts');
@@ -46,21 +47,22 @@ export const useAccounts = () => {
     try {
       if (!user) throw new Error('No user logged in');
 
-      const accountNumber = `${accountType.toUpperCase().slice(0, 3)}${Date.now()}${Math.floor(Math.random() * 1000)}`;
-      
-      const { data, error } = await supabase
-        .from('accounts')
-        .insert({
-          user_id: user.id,
-          account_type: accountType,
-          account_number: accountNumber,
-          balance: 0,
-          status: 'active'
+      const response = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          accountType,
         })
-        .select()
-        .single();
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to create account');
+      }
       
       setAccounts(prev => [data, ...prev]);
       toast.success(`${accountType} account created successfully!`);
@@ -71,19 +73,28 @@ export const useAccounts = () => {
     }
   };
 
-  const updateBalance = async (accountId: string, newBalance: number) => {
+  const updateBalance = async (accountId: number, newBalance: number) => {
     try {
-      const { error } = await supabase
-        .from('accounts')
-        .update({ balance: newBalance, updated_at: new Date().toISOString() })
-        .eq('id', accountId);
+      const response = await fetch(`/api/accounts/${accountId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          balance: newBalance.toFixed(2)
+        })
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update balance');
+      }
       
       setAccounts(prev => 
         prev.map(account => 
           account.id === accountId 
-            ? { ...account, balance: newBalance }
+            ? { ...account, balance: newBalance.toFixed(2) }
             : account
         )
       );

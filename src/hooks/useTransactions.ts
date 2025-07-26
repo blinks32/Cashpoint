@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useAccounts } from './useAccounts';
 import toast from 'react-hot-toast';
 
 export interface Transaction {
-  id: string;
-  account_id: string;
+  id: number;
+  accountId: number;
   type: 'deposit' | 'withdrawal' | 'transfer' | 'payment';
-  amount: number;
+  amount: string;
   description: string;
   status: 'pending' | 'completed' | 'failed';
-  created_at: string;
-  updated_at: string;
-  reference_number: string;
+  createdAt: string;
+  updatedAt: string;
+  referenceNumber: string;
 }
 
 export const useTransactions = () => {
@@ -34,13 +33,13 @@ export const useTransactions = () => {
 
       const accountIds = accounts.map(account => account.id);
       
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .in('account_id', accountIds)
-        .order('created_at', { ascending: false });
+      const response = await fetch(`/api/transactions?accountIds=${accountIds.join(',')}`);
+      const data = await response.json();
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch transactions');
+      }
+
       setTransactions(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch transactions');
@@ -50,49 +49,36 @@ export const useTransactions = () => {
   };
 
   const createTransaction = async (
-    accountId: string,
+    accountId: number,
     type: 'deposit' | 'withdrawal' | 'transfer' | 'payment',
     amount: number,
     description: string
   ) => {
     try {
-      const account = accounts.find(acc => acc.id === accountId);
-      if (!account) throw new Error('Account not found');
-
-      // Check balance for withdrawals
-      if ((type === 'withdrawal' || type === 'payment') && account.balance < amount) {
-        throw new Error('Insufficient funds');
-      }
-
-      const referenceNumber = `TXN${Date.now()}${Math.floor(Math.random() * 10000)}`;
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          account_id: accountId,
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountId,
           type,
           amount,
-          description,
-          status: 'completed',
-          reference_number: referenceNumber
+          description
         })
-        .select()
-        .single();
+      });
 
-      if (error) throw error;
+      const data = await response.json();
 
-      // Update account balance
-      let newBalance = account.balance;
-      if (type === 'deposit') {
-        newBalance += amount;
-      } else if (type === 'withdrawal' || type === 'payment') {
-        newBalance -= amount;
+      if (!response.ok) {
+        throw new Error(data.message || 'Transaction failed');
       }
-
-      await updateBalance(accountId, newBalance);
       
       setTransactions(prev => [data, ...prev]);
       toast.success(`${type} completed successfully!`);
+      
+      // Refresh accounts to get updated balance
+      await fetchTransactions();
       
       return data;
     } catch (error: any) {
@@ -102,27 +88,36 @@ export const useTransactions = () => {
   };
 
   const transferFunds = async (
-    fromAccountId: string,
-    toAccountId: string,
+    fromAccountId: number,
+    toAccountId: number,
     amount: number,
     description: string
   ) => {
     try {
-      const fromAccount = accounts.find(acc => acc.id === fromAccountId);
-      const toAccount = accounts.find(acc => acc.id === toAccountId);
+      const response = await fetch('/api/transfers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fromAccountId,
+          toAccountId,
+          amount,
+          description
+        })
+      });
 
-      if (!fromAccount || !toAccount) throw new Error('Account not found');
-      if (fromAccount.balance < amount) throw new Error('Insufficient funds');
+      const data = await response.json();
 
-      const referenceNumber = `TRF${Date.now()}${Math.floor(Math.random() * 10000)}`;
+      if (!response.ok) {
+        throw new Error(data.message || 'Transfer failed');
+      }
 
-      // Create withdrawal transaction
-      await createTransaction(fromAccountId, 'withdrawal', amount, `Transfer to ${toAccount.account_number}: ${description}`);
+      // Refresh transactions to show the new transfer transactions
+      await fetchTransactions();
       
-      // Create deposit transaction
-      await createTransaction(toAccountId, 'deposit', amount, `Transfer from ${fromAccount.account_number}: ${description}`);
-
       toast.success('Transfer completed successfully!');
+      return data;
     } catch (error: any) {
       toast.error(error.message);
       throw error;
