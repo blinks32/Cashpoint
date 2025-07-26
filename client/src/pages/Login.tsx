@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'wouter';
 import { DollarSign, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -12,13 +12,13 @@ const Login = () => {
     password: '',
     rememberMe: false
   });
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      setLocation('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +26,7 @@ const Login = () => {
     setLoading(true);
     try {
       await signIn(formData.email, formData.password);
-      navigate('/dashboard');
+      setLocation('/dashboard');
     } catch (error) {
       console.error('Sign in error:', error);
     } finally {

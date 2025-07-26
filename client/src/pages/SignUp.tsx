@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'wouter';
 import { DollarSign, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,13 +16,13 @@ const SignUp = () => {
     confirmPassword: '',
     agreeToTerms: false
   });
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      setLocation('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +44,7 @@ const SignUp = () => {
         lastName: formData.lastName,
         phone: formData.phone
       });
-      navigate('/kyc');
+      setLocation('/kyc');
     } catch (error) {
       console.error('Sign up error:', error);
     } finally {

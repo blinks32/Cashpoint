@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { Shield, Upload, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +26,7 @@ interface KYCFormData {
 
 const KYCPage = () => {
   const { user, updateProfile } = useAuth();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { register, handleSubmit, formState: { errors } } = useForm<KYCFormData>();
   const [currentStep, setCurrentStep] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<{[key: string]: File}>({});
@@ -34,9 +34,9 @@ const KYCPage = () => {
 
   useEffect(() => {
     if (!user) {
-      navigate('/login');
+      setLocation('/login');
     }
-  }, [user, navigate]);
+  }, [user, setLocation]);
 
   const onSubmit = async (data: KYCFormData) => {
     console.log('KYC Data:', data);
@@ -47,7 +47,7 @@ const KYCPage = () => {
         kyc_data: data,
         kyc_status: 'pending'
       });
-      navigate('/dashboard');
+      setLocation('/dashboard');
     } catch (error) {
       console.error('KYC submission error:', error);
     } finally {

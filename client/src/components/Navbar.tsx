@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'wouter';
 import { DollarSign, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
