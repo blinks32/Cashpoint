@@ -10,20 +10,43 @@
 
 ## Deployment Steps
 
-1. **Install Vercel CLI** (if not already installed):
+1. **Build the project locally first** (to ensure everything works):
+   ```bash
+   npm install
+   npm run build
+   ```
+
+2. **Install Vercel CLI** (if not already installed):
    ```bash
    npm i -g vercel
    ```
 
-2. **Login to Vercel**:
+3. **Login to Vercel**:
    ```bash
    vercel login
    ```
 
-3. **Deploy**:
+4. **Deploy**:
    ```bash
    vercel --prod
    ```
+
+## Troubleshooting White Screen Issue
+
+If you see a white screen after deployment, it's likely because:
+
+1. **Build Configuration**: Make sure your `vercel.json` has the correct build settings
+2. **Dependencies**: Ensure all dependencies are in `dependencies` (not `devDependencies`) if needed at runtime
+3. **Build Output**: Verify the build creates files in `dist/public/`
+
+## Testing Locally
+
+Before deploying, test the build locally:
+```bash
+npm run build
+# Serve the built files to test
+npx serve dist/public
+```
 
 ## Environment Variables
 
