@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  CreditCard, 
-  PiggyBank, 
-  Users, 
-  Settings, 
+import {
+  LayoutDashboard,
+  CreditCard,
+  PiggyBank,
+  Users,
+  Settings,
   LogOut,
   Plus,
   Eye,
@@ -29,7 +29,7 @@ const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { accounts, loading: accountsLoading, createAccount } = useAccounts();
   const { transactions, loading: transactionsLoading, createTransaction, transferFunds } = useTransactions();
-  
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showBalance, setShowBalance] = useState(true);
   const [showDepositModal, setShowDepositModal] = useState(false);
@@ -198,21 +198,21 @@ const Dashboard = () => {
             <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
               <h3 className="text-xl font-bold text-white mb-4">Quick Actions</h3>
               <div className="grid md:grid-cols-4 gap-4">
-                <button 
+                <button
                   onClick={() => setShowDepositModal(true)}
                   className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   <ArrowDownLeft className="h-6 w-6 text-green-400" />
                   <span className="text-white">Deposit</span>
                 </button>
-                <button 
+                <button
                   onClick={() => setShowWithdrawModal(true)}
                   className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   <ArrowUpRight className="h-6 w-6 text-blue-400" />
                   <span className="text-white">Withdraw</span>
                 </button>
-                <button 
+                <button
                   onClick={() => setShowTransferModal(true)}
                   className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
                 >
@@ -235,13 +235,13 @@ const Dashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                     <XAxis dataKey="name" stroke="#9CA3AF" />
                     <YAxis stroke="#9CA3AF" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1F2937', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1F2937',
                         border: '1px solid #374151',
                         borderRadius: '0.5rem',
                         color: '#F9FAFB'
-                      }} 
+                      }}
                     />
                     <Line type="monotone" dataKey="checking" stroke="#3B82F6" strokeWidth={3} name="Checking" />
                     <Line type="monotone" dataKey="savings" stroke="#10B981" strokeWidth={3} name="Savings" />
@@ -256,13 +256,13 @@ const Dashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                     <XAxis dataKey="category" stroke="#9CA3AF" />
                     <YAxis stroke="#9CA3AF" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1F2937', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1F2937',
                         border: '1px solid #374151',
                         borderRadius: '0.5rem',
                         color: '#F9FAFB'
-                      }} 
+                      }}
                     />
                     <Bar dataKey="amount" fill="#F59E0B" />
                   </BarChart>
@@ -274,7 +274,7 @@ const Dashboard = () => {
             <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-white">Recent Transactions</h3>
-                <button 
+                <button
                   onClick={() => setActiveTab('transactions')}
                   className="text-yellow-400 hover:text-yellow-300"
                 >
@@ -292,16 +292,15 @@ const Dashboard = () => {
                   transactions.slice(0, 5).map((transaction) => (
                     <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-full ${
-                          transaction.type === 'deposit' ? 'bg-green-500/20 text-green-400' :
+                        <div className={`p-2 rounded-full ${transaction.type === 'deposit' ? 'bg-green-500/20 text-green-400' :
                           transaction.type === 'withdrawal' ? 'bg-red-500/20 text-red-400' :
-                          transaction.type === 'transfer' ? 'bg-blue-500/20 text-blue-400' :
-                          'bg-purple-500/20 text-purple-400'
-                        }`}>
+                            transaction.type === 'transfer' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-purple-500/20 text-purple-400'
+                          }`}>
                           {transaction.type === 'deposit' ? <ArrowDownLeft size={16} /> :
-                           transaction.type === 'withdrawal' ? <ArrowUpRight size={16} /> :
-                           transaction.type === 'transfer' ? <Send size={16} /> :
-                           <CreditCard size={16} />}
+                            transaction.type === 'withdrawal' ? <ArrowUpRight size={16} /> :
+                              transaction.type === 'transfer' ? <Send size={16} /> :
+                                <CreditCard size={16} />}
                         </div>
                         <div>
                           <p className="text-white font-medium">{transaction.description}</p>
@@ -309,14 +308,12 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-semibold ${
-                          transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
-                        }`}>
+                        <p className={`font-semibold ${transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
+                          }`}>
                           {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </p>
-                        <p className={`text-sm ${
-                          transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
-                        }`}>
+                        <p className={`text-sm ${transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
+                          }`}>
                           {transaction.status}
                         </p>
                       </div>
@@ -334,14 +331,14 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-white">My Accounts</h2>
               <div className="flex space-x-2">
-                <button 
+                <button
                   onClick={() => createAccount('savings')}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-500 transition-colors flex items-center space-x-2"
                 >
                   <Plus size={20} />
                   <span>Savings Account</span>
                 </button>
-                <button 
+                <button
                   onClick={() => createAccount('investment')}
                   className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-500 transition-colors flex items-center space-x-2"
                 >
@@ -359,26 +356,25 @@ const Dashboard = () => {
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {accounts.map((account) => (
                   <div key={account.id} className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <div className={`bg-gradient-to-r ${
-                      account.account_type === 'checking' ? 'from-blue-500 to-blue-600' :
-                      account.account_type === 'savings' ? 'from-green-500 to-green-600' :
-                      'from-purple-500 to-purple-600'
-                    } w-full h-32 rounded-lg mb-4 p-4 text-white`}>
+                    <div className={`bg-gradient-to-r ${account.accountType === 'checking' ? 'from-blue-500 to-blue-600' :
+                      account.accountType === 'savings' ? 'from-green-500 to-green-600' :
+                        'from-purple-500 to-purple-600'
+                      } w-full h-32 rounded-lg mb-4 p-4 text-white`}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-sm opacity-80 capitalize">{account.account_type} Account</p>
-                          <p className="text-lg font-mono">****{account.account_number.slice(-4)}</p>
+                          <p className="text-sm opacity-80 capitalize">{account.accountType} Account</p>
+                          <p className="text-lg font-mono">****{account.accountNumber?.slice(-4) || '0000'}</p>
                         </div>
                         <Wallet className="h-6 w-6" />
                       </div>
                       <div className="mt-4">
-                        <p className="text-2xl font-bold">${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                        {account.account_type === 'savings' && <p className="text-sm opacity-80">4.5% APY</p>}
-                        {account.account_type === 'investment' && <p className="text-sm opacity-80">Optional</p>}
+                        <p className="text-2xl font-bold">${parseFloat(account.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                        {account.accountType === 'savings' && <p className="text-sm opacity-80">4.5% APY</p>}
+                        {account.accountType === 'investment' && <p className="text-sm opacity-80">Optional</p>}
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <button 
+                      <button
                         onClick={() => {
                           setSelectedAccount(account.id);
                           setShowDepositModal(true);
@@ -387,7 +383,7 @@ const Dashboard = () => {
                       >
                         Deposit
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           setSelectedAccount(account.id);
                           setShowWithdrawModal(true);
@@ -431,16 +427,15 @@ const Dashboard = () => {
                   transactions.map((transaction) => (
                     <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-full ${
-                          transaction.type === 'deposit' ? 'bg-green-500/20 text-green-400' :
+                        <div className={`p-2 rounded-full ${transaction.type === 'deposit' ? 'bg-green-500/20 text-green-400' :
                           transaction.type === 'withdrawal' ? 'bg-red-500/20 text-red-400' :
-                          transaction.type === 'transfer' ? 'bg-blue-500/20 text-blue-400' :
-                          'bg-purple-500/20 text-purple-400'
-                        }`}>
+                            transaction.type === 'transfer' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-purple-500/20 text-purple-400'
+                          }`}>
                           {transaction.type === 'deposit' ? <ArrowDownLeft size={16} /> :
-                           transaction.type === 'withdrawal' ? <ArrowUpRight size={16} /> :
-                           transaction.type === 'transfer' ? <Send size={16} /> :
-                           <CreditCard size={16} />}
+                            transaction.type === 'withdrawal' ? <ArrowUpRight size={16} /> :
+                              transaction.type === 'transfer' ? <Send size={16} /> :
+                                <CreditCard size={16} />}
                         </div>
                         <div>
                           <p className="text-white font-medium">{transaction.description}</p>
@@ -450,14 +445,12 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-semibold ${
-                          transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
-                        }`}>
+                        <p className={`font-semibold ${transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
+                          }`}>
                           {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </p>
-                        <p className={`text-sm ${
-                          transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
-                        }`}>
+                        <p className={`text-sm ${transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
+                          }`}>
                           {transaction.status}
                         </p>
                       </div>
@@ -497,9 +490,8 @@ const Dashboard = () => {
           <nav className="space-y-2">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeTab === 'dashboard' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === 'dashboard' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
@@ -507,9 +499,8 @@ const Dashboard = () => {
 
             <button
               onClick={() => setActiveTab('accounts')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeTab === 'accounts' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === 'accounts' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <CreditCard size={20} />
               <span>Accounts</span>
@@ -517,9 +508,8 @@ const Dashboard = () => {
 
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeTab === 'transactions' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === 'transactions' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                }`}
             >
               <History size={20} />
               <span>Transactions</span>
@@ -564,7 +554,7 @@ const Dashboard = () => {
                   <option value="">Select an account</option>
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.account_type.charAt(0).toUpperCase() + account.account_type.slice(1)} - ****{account.account_number.slice(-4)}
+                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'}
                     </option>
                   ))}
                 </select>
@@ -626,7 +616,7 @@ const Dashboard = () => {
                   <option value="">Select an account</option>
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.account_type.charAt(0).toUpperCase() + account.account_type.slice(1)} - ****{account.account_number.slice(-4)} (${account.balance.toFixed(2)})
+                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${parseFloat(account.balance || '0').toFixed(2)})
                     </option>
                   ))}
                 </select>
@@ -688,7 +678,7 @@ const Dashboard = () => {
                   <option value="">Select source account</option>
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.account_type.charAt(0).toUpperCase() + account.account_type.slice(1)} - ****{account.account_number.slice(-4)} (${account.balance.toFixed(2)})
+                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${parseFloat(account.balance || '0').toFixed(2)})
                     </option>
                   ))}
                 </select>
@@ -703,7 +693,7 @@ const Dashboard = () => {
                   <option value="">Select destination account</option>
                   {accounts.filter(account => account.id !== selectedAccount).map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.account_type.charAt(0).toUpperCase() + account.account_type.slice(1)} - ****{account.account_number.slice(-4)}
+                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'}
                     </option>
                   ))}
                 </select>

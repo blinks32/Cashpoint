@@ -256,6 +256,35 @@ app.get("/api/accounts/:userId", async (req, res) => {
     }
 });
 
+app.post("/api/accounts", async (req, res) => {
+    try {
+        const { userId, accountType } = req.body;
+        
+        // Validate input
+        if (!userId || !accountType) {
+            return res.status(400).json({ message: "Invalid account data" });
+        }
+        
+        if (!['checking', 'savings', 'investment'].includes(accountType)) {
+            return res.status(400).json({ message: "Invalid account type" });
+        }
+        
+        // Generate account number
+        const accountNumber = `CHE${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        
+        const account = await storage.createAccount({
+            userId: parseInt(userId),
+            accountType,
+            accountNumber
+        });
+        
+        res.status(201).json(account);
+    } catch (error) {
+        console.error("Create account error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 // Transaction routes
 app.get("/api/transactions", async (req, res) => {
     try {
