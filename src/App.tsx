@@ -15,7 +15,7 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="min-h-screen bg-gray-900">
-          <Toaster 
+          <Toaster
             position="top-right"
             toastOptions={{
               style: {
@@ -42,8 +42,8 @@ function App() {
           </Routes>
           {/* Tawk.to Live Chat */}
           {import.meta.env.VITE_TAWK_TO_PROPERTY_ID && (
-            <TawkToChat 
-              propertyId={import.meta.env.VITE_TAWK_TO_PROPERTY_ID} 
+            <TawkToChat
+              propertyId={import.meta.env.VITE_TAWK_TO_PROPERTY_ID}
               widgetId="1j3lqca3p"
             />
           )}
