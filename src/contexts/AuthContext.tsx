@@ -10,6 +10,7 @@ interface User {
   createdAt: string;
   updatedAt: string;
   kycStatus: 'pending' | 'approved' | 'rejected';
+  role: 'user' | 'admin' | 'super_admin';
 }
 
 interface AuthContextType {

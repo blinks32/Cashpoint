@@ -3,11 +3,14 @@ import { Toaster } from 'react-hot-toast';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import TawkToChat from './components/TawkToChat';
 import TawkToTest from './components/TawkToTest';
 import LandingPage from './pages/LandingPage';
 import KYCPage from './pages/KYCPage';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminLogin from './pages/AdminLogin';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 
@@ -39,6 +42,12 @@ function App() {
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
+            } />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
             } />
           </Routes>
           {/* Tawk.to Live Chat */}

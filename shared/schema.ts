@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Create enums
+export const userRoleEnum = pgEnum('user_role', ['user', 'admin', 'super_admin']);
 export const kycStatusEnum = pgEnum('kyc_status', ['pending', 'approved', 'rejected']);
 export const accountTypeEnum = pgEnum('account_type', ['checking', 'savings', 'investment']);
 export const accountStatusEnum = pgEnum('account_status', ['active', 'inactive', 'frozen']);
@@ -43,6 +44,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   kycStatus: kycStatusEnum("kyc_status").default('pending'),
+  role: userRoleEnum("role").default('user'),
 });
 
 // Accounts table

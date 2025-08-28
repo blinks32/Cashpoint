@@ -19,6 +19,11 @@ export interface IStorage {
   getTransaction(id: number): Promise<Transaction | undefined>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: number, transaction: Partial<Transaction>): Promise<Transaction | undefined>;
+  
+  // Admin operations
+  getAllUsers(): Promise<User[]>;
+  getAllAccounts(): Promise<Account[]>;
+  getAllTransactions(): Promise<Transaction[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -58,6 +63,7 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now,
       kycStatus: 'pending',
+      role: 'user',
       // Ensure all optional fields are properly handled
       phone: insertUser.phone || null,
       dateOfBirth: insertUser.dateOfBirth || null,
@@ -154,6 +160,19 @@ export class MemStorage implements IStorage {
     const updatedTransaction = { ...transaction, ...transactionData, updatedAt: new Date() };
     this.transactions.set(id, updatedTransaction);
     return updatedTransaction;
+  }
+
+  // Admin operations
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async getAllAccounts(): Promise<Account[]> {
+    return Array.from(this.accounts.values());
+  }
+
+  async getAllTransactions(): Promise<Transaction[]> {
+    return Array.from(this.transactions.values());
   }
 }
 

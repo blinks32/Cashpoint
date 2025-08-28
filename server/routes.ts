@@ -259,6 +259,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin middleware to check if user is admin
+  const requireAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID required" });
+      }
+      
+      const user = await storage.getUser(parseInt(userId));
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      req.adminUser = user;
+      next();
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  };
+
+  // Admin routes
+  app.get("/api/admin/users", requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove passwords from response
+      const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      console.error("Get all users error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/accounts", requireAdmin, async (req, res) => {
+    try {
+      const accounts = await storage.getAllAccounts();
+      res.json(accounts);
+    } catch (error) {
+      console.error("Get all accounts error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/transactions", requireAdmin, async (req, res) => {
+    try {
+      const transactions = await storage.getAllTransactions();
+      res.json(transactions);
+    } catch (error) {
+      console.error("Get all transactions error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/admin/users/:id/kyc", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Invalid KYC status" });
+      }
+      
+      const updatedUser = await storage.updateUser(userId, { kycStatus: status });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Update KYC status error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/admin/users/:id/role", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { role } = req.body;
+      
+      if (!['user', 'admin'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      
+      // Only super_admin can create other admins
+      if (role === 'admin' && req.adminUser.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+      
+      const updatedUser = await storage.updateUser(userId, { role });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Update user role error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/admin/accounts/:id/status", requireAdmin, async (req, res) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!['active', 'inactive', 'frozen'].includes(status)) {
+        return res.status(400).json({ message: "Invalid account status" });
+      }
+      
+      const updatedAccount = await storage.updateAccount(accountId, { status });
+      if (!updatedAccount) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      
+      res.json(updatedAccount);
+    } catch (error) {
+      console.error("Update account status error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/stats", requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const accounts = await storage.getAllAccounts();
+      const transactions = await storage.getAllTransactions();
+      
+      const stats = {
+        totalUsers: users.length,
+        totalAccounts: accounts.length,
+        totalBalance: accounts.reduce((sum, acc) => sum + parseFloat(acc.balance || '0'), 0),
+        pendingKYC: users.filter(u => u.kycStatus === 'pending').length,
+        totalTransactions: transactions.length,
+        recentTransactions: transactions.slice(-10)
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Get admin stats error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Send welcome email route (replaces Supabase Edge Function)
   app.post("/api/send-welcome-email", async (req, res) => {
     try {

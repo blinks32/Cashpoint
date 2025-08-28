@@ -19,7 +19,8 @@ import {
   Download,
   History,
   Menu,
-  X
+  X,
+  Shield
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
@@ -578,6 +579,17 @@ const Dashboard = () => {
                 <Settings size={20} />
                 <span>Settings</span>
               </button>
+
+              {/* Admin Panel Link - Only show for admin users */}
+              {(user?.role === 'admin' || user?.role === 'super_admin') && (
+                <a
+                  href="/admin"
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-purple-400 hover:bg-gray-700 transition-colors"
+                >
+                  <Shield size={20} />
+                  <span>Admin Panel</span>
+                </a>
+              )}
 
               <button
                 onClick={handleSignOut}
