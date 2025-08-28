@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import TawkToChat from './components/TawkToChat';
+import TawkToTest from './components/TawkToTest';
 import LandingPage from './pages/LandingPage';
 import KYCPage from './pages/KYCPage';
 import Dashboard from './pages/Dashboard';
@@ -41,12 +42,13 @@ function App() {
             } />
           </Routes>
           {/* Tawk.to Live Chat */}
-          {import.meta.env.VITE_TAWK_TO_PROPERTY_ID && (
-            <TawkToChat
-              propertyId={import.meta.env.VITE_TAWK_TO_PROPERTY_ID}
-              widgetId="1j3lqca3p"
-            />
-          )}
+          <TawkToChat
+            propertyId="68af039f7190b019215670b4"
+            widgetId="1j3lqca3p"
+          />
+          
+          {/* TawkTo Test Component - Remove this in production */}
+          {process.env.NODE_ENV === 'development' && <TawkToTest />}
         </div>
       </Router>
     </AuthProvider>

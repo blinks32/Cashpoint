@@ -13,10 +13,19 @@ const TawkToChat: React.FC<TawkToChatProps> = ({
   const { user } = useAuth();
 
   useEffect(() => {
-    // Check if Tawk_API already exists to avoid duplicate loading
-    if (window.Tawk_API) {
+    // Don't load if no propertyId is provided
+    if (!propertyId || propertyId === 'your_actual_property_id_here') {
+      console.warn('TawkTo: No valid property ID provided');
       return;
     }
+
+    // Check if Tawk_API already exists to avoid duplicate loading
+    if (window.Tawk_API) {
+      console.log('TawkTo: Already loaded');
+      return;
+    }
+
+    console.log('TawkTo: Loading chat widget with property ID:', propertyId);
 
     // Initialize Tawk_API
     window.Tawk_API = window.Tawk_API || {};
@@ -24,6 +33,8 @@ const TawkToChat: React.FC<TawkToChatProps> = ({
 
     // Set up Tawk_API callbacks
     window.Tawk_API.onLoad = function() {
+      console.log('TawkTo: Chat widget loaded successfully');
+      
       // Set visitor information if user is logged in
       if (user && window.Tawk_API) {
         window.Tawk_API.visitor = {
@@ -36,7 +47,13 @@ const TawkToChat: React.FC<TawkToChatProps> = ({
           userId: user.id,
           userType: 'authenticated'
         });
+        
+        console.log('TawkTo: User information set for authenticated user');
       }
+    };
+
+    window.Tawk_API.onStatusChange = function(status) {
+      console.log('TawkTo: Status changed to:', status);
     };
 
     // Create and append the Tawk.to script
@@ -46,9 +63,19 @@ const TawkToChat: React.FC<TawkToChatProps> = ({
     script.charset = 'UTF-8';
     script.setAttribute('crossorigin', '*');
     
+    script.onload = () => {
+      console.log('TawkTo: Script loaded successfully');
+    };
+    
+    script.onerror = (error) => {
+      console.error('TawkTo: Failed to load script', error);
+    };
+    
     const firstScript = document.getElementsByTagName('script')[0];
     if (firstScript && firstScript.parentNode) {
       firstScript.parentNode.insertBefore(script, firstScript);
+    } else {
+      document.head.appendChild(script);
     }
 
     // Cleanup function
@@ -57,6 +84,14 @@ const TawkToChat: React.FC<TawkToChatProps> = ({
       const existingScript = document.querySelector(`script[src*="${propertyId}"]`);
       if (existingScript) {
         existingScript.remove();
+      }
+      
+      // Clean up global variables
+      if (window.Tawk_API) {
+        delete window.Tawk_API;
+      }
+      if (window.Tawk_LoadStart) {
+        delete window.Tawk_LoadStart;
       }
     };
   }, [propertyId, widgetId]);
