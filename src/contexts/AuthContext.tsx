@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { apiRequest } from '../config/api';
 
 interface User {
   id: number;
@@ -51,11 +52,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, userData: any) => {
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await apiRequest('/api/auth/signup', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           email,
           password,
@@ -82,11 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const response = await fetch('/api/auth/signin', {
+      const response = await apiRequest('/api/auth/signin', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           email,
           password
