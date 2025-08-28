@@ -1,5 +1,5 @@
-const bcrypt = require('bcrypt');
-const { storage } = require('../server/storage');
+import bcrypt from 'bcrypt';
+import { storage } from '../server/storage.js';
 
 async function createAdminUser() {
   try {
@@ -46,9 +46,5 @@ async function createAdminUser() {
   }
 }
 
-// Run if called directly
-if (require.main === module) {
-  createAdminUser();
-}
-
-module.exports = { createAdminUser };
+// Run the function
+createAdminUser();
