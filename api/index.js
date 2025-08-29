@@ -459,9 +459,11 @@ app.post("/api/transfers", async (req, res) => {
 // Admin middleware to check if user is admin
 const requireAdmin = async (req, res, next) => {
     try {
-        const { userId } = req.body;
+        // Get user ID from query params, body, or headers
+        let userId = req.query.userId || req.body.userId || req.headers['x-user-id'];
+        
         if (!userId) {
-            return res.status(401).json({ message: "User ID required" });
+            return res.status(401).json({ message: "User authentication required" });
         }
         
         const user = await storage.getUser(parseInt(userId));
@@ -472,6 +474,7 @@ const requireAdmin = async (req, res, next) => {
         req.adminUser = user;
         next();
     } catch (error) {
+        console.error("Admin middleware error:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 };

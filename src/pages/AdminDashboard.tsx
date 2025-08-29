@@ -21,6 +21,7 @@ import {
   Shield
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAdmin } from '../hooks/useAdmin';
 import toast from 'react-hot-toast';
 
 interface User {
@@ -57,11 +58,21 @@ interface Transaction {
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
+  const {
+    users,
+    accounts,
+    transactions,
+    stats,
+    loading,
+    fetchUsers,
+    fetchAccounts,
+    fetchTransactions,
+    fetchStats,
+    updateKYCStatus,
+    updateUserRole,
+    updateAccountStatus,
+  } = useAdmin();
   const [activeTab, setActiveTab] = useState('overview');
-  const [users, setUsers] = useState<User[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Check if user is admin
@@ -73,68 +84,27 @@ const AdminDashboard = () => {
     }
   }, [user]);
 
-  // Mock data - replace with actual API calls
+  // Fetch admin data on component mount
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return;
+      }
+
       try {
-        // Mock data - replace with actual API calls
-        setUsers([
-          {
-            id: 1,
-            email: 'john@example.com',
-            firstName: 'John',
-            lastName: 'Doe',
-            phone: '+1234567890',
-            kycStatus: 'approved',
-            role: 'user',
-            createdAt: '2024-01-15T10:30:00Z'
-          },
-          {
-            id: 2,
-            email: 'jane@example.com',
-            firstName: 'Jane',
-            lastName: 'Smith',
-            phone: '+1234567891',
-            kycStatus: 'pending',
-            role: 'user',
-            createdAt: '2024-01-16T14:20:00Z'
-          }
-        ]);
-
-        setAccounts([
-          {
-            id: 1,
-            userId: 1,
-            accountType: 'checking',
-            accountNumber: '1234567890',
-            balance: '5000.00',
-            status: 'active',
-            createdAt: '2024-01-15T10:35:00Z'
-          }
-        ]);
-
-        setTransactions([
-          {
-            id: 1,
-            accountId: 1,
-            type: 'deposit',
-            amount: '1000.00',
-            description: 'Initial deposit',
-            status: 'completed',
-            createdAt: '2024-01-15T10:40:00Z',
-            referenceNumber: 'TXN001'
-          }
+        await Promise.all([
+          fetchUsers(),
+          fetchAccounts(),
+          fetchTransactions(),
+          fetchStats(),
         ]);
       } catch (error) {
-        toast.error('Failed to fetch admin data');
-      } finally {
-        setLoading(false);
+        console.error('Failed to fetch admin data:', error);
       }
     };
 
     fetchData();
-  }, []);
+  }, [user]);
 
   const handleSignOut = async () => {
     try {
@@ -144,33 +114,11 @@ const AdminDashboard = () => {
     }
   };
 
-  const updateKYCStatus = async (userId: number, status: 'approved' | 'rejected') => {
-    try {
-      // API call to update KYC status
-      toast.success(`KYC status updated to ${status}`);
-      setUsers(users.map(u => u.id === userId ? { ...u, kycStatus: status } : u));
-    } catch (error) {
-      toast.error('Failed to update KYC status');
-    }
-  };
-
-  const updateUserRole = async (userId: number, role: 'user' | 'admin') => {
-    try {
-      // API call to update user role
-      toast.success(`User role updated to ${role}`);
-      setUsers(users.map(u => u.id === userId ? { ...u, role } : u));
-    } catch (error) {
-      toast.error('Failed to update user role');
-    }
-  };
-
   const freezeAccount = async (accountId: number) => {
     try {
-      // API call to freeze account
-      toast.success('Account frozen successfully');
-      setAccounts(accounts.map(a => a.id === accountId ? { ...a, status: 'frozen' } : a));
+      await updateAccountStatus(accountId, 'frozen');
     } catch (error) {
-      toast.error('Failed to freeze account');
+      // Error is already handled by the hook
     }
   };
 
@@ -182,7 +130,7 @@ const AdminDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-400">Total Users</p>
-              <h3 className="text-2xl font-bold text-white">{users.length}</h3>
+              <h3 className="text-2xl font-bold text-white">{stats?.totalUsers || users.length}</h3>
               <p className="text-sm text-green-400">+12% from last month</p>
             </div>
             <Users className="h-8 w-8 text-blue-400" />
@@ -193,7 +141,7 @@ const AdminDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-400">Total Accounts</p>
-              <h3 className="text-2xl font-bold text-white">{accounts.length}</h3>
+              <h3 className="text-2xl font-bold text-white">{stats?.totalAccounts || accounts.length}</h3>
               <p className="text-sm text-green-400">+8% from last month</p>
             </div>
             <CreditCard className="h-8 w-8 text-green-400" />
@@ -205,7 +153,7 @@ const AdminDashboard = () => {
             <div>
               <p className="text-sm text-gray-400">Total Balance</p>
               <h3 className="text-2xl font-bold text-white">
-                ${accounts.reduce((sum, acc) => sum + parseFloat(acc.balance), 0).toLocaleString()}
+                ${(stats?.totalBalance || accounts.reduce((sum, acc) => sum + parseFloat(acc.balance), 0)).toLocaleString()}
               </h3>
               <p className="text-sm text-green-400">+15% from last month</p>
             </div>
@@ -218,7 +166,7 @@ const AdminDashboard = () => {
             <div>
               <p className="text-sm text-gray-400">Pending KYC</p>
               <h3 className="text-2xl font-bold text-white">
-                {users.filter(u => u.kycStatus === 'pending').length}
+                {stats?.pendingKYC || users.filter(u => u.kycStatus === 'pending').length}
               </h3>
               <p className="text-sm text-orange-400">Requires attention</p>
             </div>
@@ -231,7 +179,7 @@ const AdminDashboard = () => {
       <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
         <h3 className="text-xl font-bold text-white mb-4">Recent Transactions</h3>
         <div className="space-y-4">
-          {transactions.slice(0, 5).map((transaction) => (
+          {(stats?.recentTransactions || transactions.slice(0, 5)).map((transaction) => (
             <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className={`p-2 rounded-full ${
