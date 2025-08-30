@@ -146,17 +146,22 @@ const storage = new MemStorage();
 // Create default admin user on startup
 async function createDefaultAdmin() {
     try {
+        console.log('Starting admin user creation process...');
         const adminEmail = 'admin@cashpoint.com';
         const adminPassword = 'admin123';
         
         // Check if admin already exists
         const existingAdmin = await storage.getUserByEmail(adminEmail);
         if (existingAdmin) {
+            console.log('Admin user already exists:', existingAdmin.email, 'Role:', existingAdmin.role);
             return;
         }
         
+        console.log('Creating new admin user...');
+        
         // Hash password
         const hashedPassword = await bcrypt.hash(adminPassword, 12);
+        console.log('Password hashed successfully');
         
         // Create admin user
         const adminUser = await storage.createUser({
@@ -167,25 +172,73 @@ async function createDefaultAdmin() {
             phone: '+1234567890'
         });
         
+        console.log('Admin user created with ID:', adminUser.id);
+        
         // Update role to admin
-        await storage.updateUser(adminUser.id, { 
+        const updatedUser = await storage.updateUser(adminUser.id, { 
             role: 'admin',
             kycStatus: 'approved'
         });
         
-        console.log('Default admin user created for Vercel deployment');
+        console.log('✅ Default admin user created successfully for Vercel deployment', {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            kycStatus: updatedUser.kycStatus
+        });
+        
+        // Verify the user was created correctly
+        const verifyUser = await storage.getUserByEmail(adminEmail);
+        console.log('Verification - Admin user in storage:', {
+            id: verifyUser.id,
+            email: verifyUser.email,
+            role: verifyUser.role
+        });
+        
     } catch (error) {
-        console.error('Error creating default admin user:', error);
+        console.error('❌ Error creating default admin user:', error);
+        console.error('Stack trace:', error.stack);
     }
 }
 
 // Create admin user on startup
 createDefaultAdmin();
 
+// Debug endpoint to check admin user (remove in production)
+app.get("/api/debug/admin", async (req, res) => {
+    try {
+        const adminUser = await storage.getUserByEmail('admin@cashpoint.com');
+        const allUsers = await storage.getAllUsers();
+        res.json({
+            adminExists: !!adminUser,
+            adminUser: adminUser ? { id: adminUser.id, email: adminUser.email, role: adminUser.role } : null,
+            totalUsers: allUsers.length,
+            allUsers: allUsers.map(u => ({ id: u.id, email: u.email, role: u.role }))
+        });
+    } catch (error) {
+        console.error("Debug endpoint error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Middleware to ensure admin user exists on every request
+app.use(async (req, res, next) => {
+    try {
+        const adminUser = await storage.getUserByEmail('admin@cashpoint.com');
+        if (!adminUser) {
+            console.log('Admin user not found, creating...');
+            await createDefaultAdmin();
+        }
+    } catch (error) {
+        console.error('Error in admin check middleware:', error);
+    }
+    next();
+});
 
 // CORS middleware for Vercel
 app.use((req, res, next) => {
@@ -245,21 +298,36 @@ app.post("/api/auth/signup", async (req, res) => {
 
 app.post("/api/auth/signin", async (req, res) => {
     try {
+        console.log('Signin attempt:', { email: req.body.email });
         const { email, password } = req.body;
+        
+        if (!email || !password) {
+            console.log('Missing email or password');
+            return res.status(400).json({ message: "Email and password are required" });
+        }
+        
         const user = await storage.getUserByEmail(email);
         if (!user) {
+            console.log('User not found:', email);
+            // List all users for debugging (remove in production)
+            const allUsers = await storage.getAllUsers();
+            console.log('Available users:', allUsers.map(u => ({ id: u.id, email: u.email, role: u.role })));
             return res.status(401).json({ message: "Invalid credentials" });
         }
 
+        console.log('User found:', { id: user.id, email: user.email, role: user.role });
+        
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
+            console.log('Invalid password for user:', email);
             return res.status(401).json({ message: "Invalid credentials" });
         }
 
         const { password: _, ...userWithoutPassword } = user;
+        console.log('✅ User signed in successfully:', { id: user.id, email: user.email, role: user.role });
         res.json({ user: userWithoutPassword });
     } catch (error) {
-        console.error("Signin error:", error);
+        console.error("❌ Signin error:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
@@ -463,11 +531,22 @@ const requireAdmin = async (req, res, next) => {
         let userId = req.query.userId || req.body.userId || req.headers['x-user-id'];
         
         if (!userId) {
+            console.log("Admin middleware: No userId provided", {
+                query: req.query,
+                body: req.body,
+                headers: req.headers
+            });
             return res.status(401).json({ message: "User authentication required" });
         }
         
         const user = await storage.getUser(parseInt(userId));
-        if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        if (!user) {
+            console.log("Admin middleware: User not found", userId);
+            return res.status(401).json({ message: "User not found" });
+        }
+        
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
+            console.log("Admin middleware: User is not admin", { userId, role: user.role });
             return res.status(403).json({ message: "Admin access required" });
         }
         

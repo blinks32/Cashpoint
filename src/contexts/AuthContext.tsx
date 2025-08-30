@@ -94,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.message || 'Sign in failed');
       }
 
+      console.log('User signed in successfully:', data.user);
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
       toast.success('Signed in successfully!');

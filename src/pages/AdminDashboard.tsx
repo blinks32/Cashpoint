@@ -57,7 +57,7 @@ interface Transaction {
 }
 
 const AdminDashboard = () => {
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const {
     users,
     accounts,
@@ -87,7 +87,8 @@ const AdminDashboard = () => {
   // Fetch admin data on component mount
   useEffect(() => {
     const fetchData = async () => {
-      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+      // Wait for auth to finish loading and ensure user is admin
+      if (authLoading || !user || (user.role !== 'admin' && user.role !== 'super_admin')) {
         return;
       }
 
@@ -104,7 +105,7 @@ const AdminDashboard = () => {
     };
 
     fetchData();
-  }, [user]);
+  }, [user, authLoading]);
 
   const handleSignOut = async () => {
     try {
@@ -419,7 +420,7 @@ const AdminDashboard = () => {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-400"></div>

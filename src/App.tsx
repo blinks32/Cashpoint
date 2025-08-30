@@ -55,7 +55,7 @@ function App() {
             propertyId="68af039f7190b019215670b4"
             widgetId="1j3lqca3p"
           />
-          
+
           {/* TawkTo Test Component - Remove this in production */}
           {process.env.NODE_ENV === 'development' && <TawkToTest />}
         </div>
