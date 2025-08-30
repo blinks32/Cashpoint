@@ -201,6 +201,8 @@ async function createDefaultAdmin() {
     }
 }
 
+const app = express();
+
 // Create admin user on startup
 createDefaultAdmin();
 
@@ -220,8 +222,6 @@ app.get("/api/debug/admin", async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
-
-const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
