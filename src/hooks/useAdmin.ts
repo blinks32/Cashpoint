@@ -145,11 +145,12 @@ export const useAdmin = () => {
     try {
       const response = await makeAdminRequest(`/api/admin/users/${userId}/kyc`, {
         method: 'PUT',
-        body: JSON.stringify({ status, userId: user?.id }),
+        body: JSON.stringify({ status }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to update KYC status');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update KYC status');
       }
       
       const updatedUser = await response.json();
@@ -166,11 +167,12 @@ export const useAdmin = () => {
     try {
       const response = await makeAdminRequest(`/api/admin/users/${userId}/role`, {
         method: 'PUT',
-        body: JSON.stringify({ role, userId: user?.id }),
+        body: JSON.stringify({ role }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to update user role');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update user role');
       }
       
       const updatedUser = await response.json();
@@ -187,11 +189,12 @@ export const useAdmin = () => {
     try {
       const response = await makeAdminRequest(`/api/admin/accounts/${accountId}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status, userId: user?.id }),
+        body: JSON.stringify({ status }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to update account status');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update account status');
       }
       
       const updatedAccount = await response.json();

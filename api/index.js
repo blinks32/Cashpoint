@@ -540,18 +540,32 @@ const requireAdmin = async (req, res, next) => {
         // Get user ID from query params, body, or headers
         let userId = req.query.userId || req.body.userId || req.headers['x-user-id'];
         
+        console.log('Admin middleware - checking userId:', { 
+            query: req.query.userId, 
+            body: req.body.userId, 
+            headers: req.headers['x-user-id'],
+            finalUserId: userId 
+        });
+        
         if (!userId) {
+            console.log('Admin middleware: No userId provided');
             return res.status(401).json({ message: "User authentication required" });
         }
         
         const user = await storage.getUser(parseInt(userId));
         if (!user) {
+            console.log('Admin middleware: User not found', userId);
             return res.status(401).json({ message: "User not found" });
         }
         
+        console.log('Admin middleware: User found', { id: user.id, email: user.email, role: user.role });
+        
         if (user.role !== 'admin' && user.role !== 'super_admin') {
+            console.log('Admin middleware: User is not admin', { userId, role: user.role });
             return res.status(403).json({ message: "Admin access required" });
         }
+        
+        console.log('Admin middleware: Access granted');
         req.adminUser = user;
         next();
     } catch (error) {
