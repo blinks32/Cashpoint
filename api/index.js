@@ -173,43 +173,7 @@ async function createDefaultData() {
             console.log('✅ Admin user created:', adminUser.email);
         }
         
-        // Only create test users if no real users exist (excluding admin)
-        const allUsers = await storage.getAllUsers();
-        const nonAdminUsers = allUsers.filter(u => u.role !== 'admin' && u.role !== 'super_admin');
-        
-        if (nonAdminUsers.length === 0) {
-            console.log('No real users found, creating minimal test data...');
-            
-            // Create just one test user for demo purposes
-            const testUser = {
-                email: 'demo.user@example.com',
-                firstName: 'Demo',
-                lastName: 'User',
-                phone: '+1234567890'
-            };
-            
-            const userPassword = await bcrypt.hash('password123', 12);
-            
-            const user = await storage.createUser({
-                ...testUser,
-                password: userPassword
-            });
-            
-            // Create checking account
-            const accountNumber = `CHE${Date.now()}${Math.floor(Math.random() * 1000)}`;
-            const account = await storage.createAccount({
-                userId: user.id,
-                accountType: 'checking',
-                accountNumber
-            });
-            
-            // Add initial balance
-            await storage.updateAccount(account.id, {
-                balance: '1500.00'
-            });
-            
-            console.log(`✅ Created demo user: ${user.email}`);
-        }
+        // No test users - only real customer data will be shown
         
         const finalUsers = await storage.getAllUsers();
         console.log(`✅ Data initialization complete. Total users: ${finalUsers.length}`);

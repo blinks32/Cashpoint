@@ -74,6 +74,7 @@ const AdminDashboard = () => {
   } = useAdmin();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedAccount, setExpandedAccount] = useState<number | null>(null);
 
   // Check if user is admin
   useEffect(() => {
@@ -121,6 +122,14 @@ const AdminDashboard = () => {
     } catch (error) {
       // Error is already handled by the hook
     }
+  };
+
+  const getUserForAccount = (userId: number) => {
+    return users.find(user => user.id === userId);
+  };
+
+  const getAccountTransactions = (accountId: number) => {
+    return transactions.filter(txn => txn.accountId === accountId);
   };
 
   const renderOverview = () => (
@@ -339,70 +348,256 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Account Management</h2>
-        <button className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-300 transition-colors">
-          Export Accounts
-        </button>
+        <div className="flex space-x-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search accounts..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+            />
+          </div>
+          <button className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-300 transition-colors">
+            Export Accounts
+          </button>
+        </div>
       </div>
 
-      <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Account</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Balance</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {accounts.map((account) => (
-                <tr key={account.id} className="hover:bg-gray-700">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <p className="text-white font-medium">****{account.accountNumber.slice(-4)}</p>
-                    <p className="text-gray-400 text-sm">User ID: {account.userId}</p>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="capitalize text-gray-300">{account.accountType}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
-                    ${parseFloat(account.balance).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      account.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                      account.status === 'frozen' ? 'bg-red-500/20 text-red-400' :
-                      'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {account.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-300">
-                    {new Date(account.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-400 hover:text-blue-300" title="View Details">
-                        <Eye size={16} />
-                      </button>
-                      {account.status === 'active' && (
+      <div className="space-y-4">
+        {accounts
+          .filter(account => {
+            const user = getUserForAccount(account.userId);
+            return (
+              account.accountNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              user?.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              user?.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              user?.email.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+          })
+          .map((account) => {
+            const user = getUserForAccount(account.userId);
+            const accountTransactions = getAccountTransactions(account.id);
+            const isExpanded = expandedAccount === account.id;
+
+            return (
+              <div key={account.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                {/* Main Account Row */}
+                <div className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                          <CreditCard className="h-6 w-6 text-white" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-lg font-semibold text-white">
+                            {account.accountNumber}
+                          </h3>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            account.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                            account.status === 'frozen' ? 'bg-red-500/20 text-red-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {account.status}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-sm capitalize">{account.accountType} Account</p>
+                        {user && (
+                          <p className="text-gray-300 text-sm">
+                            {user.firstName} {user.lastName} ({user.email})
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-white">
+                          ${parseFloat(account.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                          Created {new Date(account.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      
+                      <div className="flex space-x-2">
                         <button
-                          onClick={() => freezeAccount(account.id)}
-                          className="text-red-400 hover:text-red-300"
-                          title="Freeze Account"
+                          onClick={() => setExpandedAccount(isExpanded ? null : account.id)}
+                          className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-gray-700"
+                          title={isExpanded ? "Collapse Details" : "Expand Details"}
                         >
-                          <XCircle size={16} />
+                          <Eye size={16} />
                         </button>
+                        {account.status === 'active' && (
+                          <button
+                            onClick={() => freezeAccount(account.id)}
+                            className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-gray-700"
+                            title="Freeze Account"
+                          >
+                            <XCircle size={16} />
+                          </button>
+                        )}
+                        {account.status === 'frozen' && (
+                          <button
+                            onClick={() => updateAccountStatus(account.id, 'active')}
+                            className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-gray-700"
+                            title="Unfreeze Account"
+                          >
+                            <CheckCircle size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <div className="border-t border-gray-700 bg-gray-750">
+                    <div className="p-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Account Details */}
+                        <div>
+                          <h4 className="text-lg font-semibold text-white mb-4">Account Details</h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Account ID:</span>
+                              <span className="text-white">{account.id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Account Number:</span>
+                              <span className="text-white font-mono">{account.accountNumber}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Account Type:</span>
+                              <span className="text-white capitalize">{account.accountType}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Current Balance:</span>
+                              <span className="text-white font-semibold">
+                                ${parseFloat(account.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Status:</span>
+                              <span className={`capitalize ${
+                                account.status === 'active' ? 'text-green-400' :
+                                account.status === 'frozen' ? 'text-red-400' :
+                                'text-gray-400'
+                              }`}>
+                                {account.status}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Created:</span>
+                              <span className="text-white">
+                                {new Date(account.createdAt).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* User Information */}
+                        {user && (
+                          <div>
+                            <h4 className="text-lg font-semibold text-white mb-4">Account Holder</h4>
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Name:</span>
+                                <span className="text-white">{user.firstName} {user.lastName}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Email:</span>
+                                <span className="text-white">{user.email}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Phone:</span>
+                                <span className="text-white">{user.phone || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">KYC Status:</span>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  user.kycStatus === 'approved' ? 'bg-green-500/20 text-green-400' :
+                                  user.kycStatus === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-red-500/20 text-red-400'
+                                }`}>
+                                  {user.kycStatus}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Role:</span>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  user.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
+                                  user.role === 'super_admin' ? 'bg-red-500/20 text-red-400' :
+                                  'bg-blue-500/20 text-blue-400'
+                                }`}>
+                                  {user.role}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Member Since:</span>
+                                <span className="text-white">
+                                  {new Date(user.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Recent Transactions */}
+                      {accountTransactions.length > 0 && (
+                        <div className="mt-6">
+                          <h4 className="text-lg font-semibold text-white mb-4">
+                            Recent Transactions ({accountTransactions.length})
+                          </h4>
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {accountTransactions.slice(0, 10).map((transaction) => (
+                              <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                                <div className="flex items-center space-x-3">
+                                  <div className={`p-2 rounded-full ${
+                                    transaction.type === 'deposit' ? 'bg-green-500/20 text-green-400' :
+                                    transaction.type === 'withdrawal' ? 'bg-red-500/20 text-red-400' :
+                                    'bg-blue-500/20 text-blue-400'
+                                  }`}>
+                                    <Activity size={12} />
+                                  </div>
+                                  <div>
+                                    <p className="text-white text-sm font-medium">{transaction.description}</p>
+                                    <p className="text-gray-400 text-xs">{transaction.referenceNumber}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className={`text-sm font-semibold ${
+                                    transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
+                                  }`}>
+                                    {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount}
+                                  </p>
+                                  <p className="text-xs text-gray-400">
+                                    {new Date(transaction.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
       </div>
     </div>
   );
