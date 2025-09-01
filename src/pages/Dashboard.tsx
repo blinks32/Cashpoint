@@ -580,16 +580,7 @@ const Dashboard = () => {
                 <span>Settings</span>
               </button>
 
-              {/* Admin Panel Link - Only show for admin users */}
-              {(user?.role === 'admin' || user?.role === 'super_admin') && (
-                <a
-                  href="/admin"
-                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-purple-400 hover:bg-gray-700 transition-colors"
-                >
-                  <Shield size={20} />
-                  <span>Admin Panel</span>
-                </a>
-              )}
+
 
               <button
                 onClick={handleSignOut}

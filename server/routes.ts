@@ -262,7 +262,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin middleware to check if user is admin
   const requireAdmin = async (req: any, res: any, next: any) => {
     try {
-      const { userId } = req.body;
+      // Check for userId in query params, body, or headers
+      const userId = req.query.userId || req.body.userId || req.headers['x-user-id'];
+      
       if (!userId) {
         return res.status(401).json({ message: "User ID required" });
       }
@@ -275,6 +277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.adminUser = user;
       next();
     } catch (error) {
+      console.error("Admin middleware error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   };
