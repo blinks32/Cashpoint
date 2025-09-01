@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAdmin } from '../hooks/useAdmin';
-import AdminDebug from '../components/AdminDebug';
 import toast from 'react-hot-toast';
 
 interface User {
@@ -408,6 +407,108 @@ const AdminDashboard = () => {
     </div>
   );
 
+  const renderSettings = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Admin Settings</h2>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* System Information */}
+        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+          <h3 className="text-xl font-bold text-white mb-4">System Information</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Total Users:</span>
+              <span className="text-white">{users.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Total Accounts:</span>
+              <span className="text-white">{accounts.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Total Transactions:</span>
+              <span className="text-white">{transactions.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Pending KYC:</span>
+              <span className="text-yellow-400">{users.filter(u => u.kycStatus === 'pending').length}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Admin Actions */}
+        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+          <h3 className="text-xl font-bold text-white mb-4">Admin Actions</h3>
+          <div className="space-y-3">
+            <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-500 transition-colors">
+              Export All Data
+            </button>
+            <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-500 transition-colors">
+              Generate Reports
+            </button>
+            <button className="w-full bg-yellow-600 text-white py-2 px-4 rounded-lg hover:bg-yellow-500 transition-colors">
+              System Backup
+            </button>
+            <button className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-500 transition-colors">
+              Clear Cache
+            </button>
+          </div>
+        </div>
+
+        {/* Security Settings */}
+        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+          <h3 className="text-xl font-bold text-white mb-4">Security Settings</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Two-Factor Authentication</span>
+              <button className="bg-green-600 text-white px-3 py-1 rounded text-sm">Enabled</button>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Session Timeout</span>
+              <select className="bg-gray-700 text-white px-3 py-1 rounded text-sm">
+                <option>30 minutes</option>
+                <option>1 hour</option>
+                <option>2 hours</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Login Attempts</span>
+              <select className="bg-gray-700 text-white px-3 py-1 rounded text-sm">
+                <option>3 attempts</option>
+                <option>5 attempts</option>
+                <option>10 attempts</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Notification Settings */}
+        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+          <h3 className="text-xl font-bold text-white mb-4">Notification Settings</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">New User Registrations</span>
+              <input type="checkbox" defaultChecked className="rounded" />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Large Transactions</span>
+              <input type="checkbox" defaultChecked className="rounded" />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Failed Login Attempts</span>
+              <input type="checkbox" defaultChecked className="rounded" />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">System Alerts</span>
+              <input type="checkbox" defaultChecked className="rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
@@ -416,6 +517,8 @@ const AdminDashboard = () => {
         return renderUsers();
       case 'accounts':
         return renderAccounts();
+      case 'settings':
+        return renderSettings();
       default:
         return renderOverview();
     }
@@ -473,7 +576,10 @@ const AdminDashboard = () => {
             </button>
 
             <button
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-gray-300 hover:bg-gray-700 transition-colors"
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                activeTab === 'settings' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+              }`}
             >
               <Settings size={20} />
               <span>Settings</span>
@@ -492,7 +598,6 @@ const AdminDashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 p-8">
-        <AdminDebug />
         {renderContent()}
       </div>
     </div>

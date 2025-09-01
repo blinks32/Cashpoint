@@ -173,52 +173,42 @@ async function createDefaultData() {
             console.log('✅ Admin user created:', adminUser.email);
         }
         
-        // Create test users if none exist
+        // Only create test users if no real users exist (excluding admin)
         const allUsers = await storage.getAllUsers();
-        if (allUsers.length <= 1) { // Only admin exists
-            console.log('Creating test users...');
+        const nonAdminUsers = allUsers.filter(u => u.role !== 'admin' && u.role !== 'super_admin');
+        
+        if (nonAdminUsers.length === 0) {
+            console.log('No real users found, creating minimal test data...');
             
-            const testUsers = [
-                { email: 'john.doe@example.com', firstName: 'John', lastName: 'Doe', phone: '+1234567891' },
-                { email: 'jane.smith@example.com', firstName: 'Jane', lastName: 'Smith', phone: '+1234567892' },
-                { email: 'bob.johnson@example.com', firstName: 'Bob', lastName: 'Johnson', phone: '+1234567893' },
-                { email: 'alice.brown@example.com', firstName: 'Alice', lastName: 'Brown', phone: '+1234567894' }
-            ];
+            // Create just one test user for demo purposes
+            const testUser = {
+                email: 'demo.user@example.com',
+                firstName: 'Demo',
+                lastName: 'User',
+                phone: '+1234567890'
+            };
             
             const userPassword = await bcrypt.hash('password123', 12);
             
-            for (const userData of testUsers) {
-                const user = await storage.createUser({
-                    ...userData,
-                    password: userPassword
-                });
-                
-                // Create checking account
-                const accountNumber = `CHE${Date.now()}${Math.floor(Math.random() * 1000)}`;
-                const account = await storage.createAccount({
-                    userId: user.id,
-                    accountType: 'checking',
-                    accountNumber
-                });
-                
-                // Add initial balance
-                await storage.updateAccount(account.id, {
-                    balance: (Math.random() * 5000 + 1000).toFixed(2)
-                });
-                
-                // Create sample transactions
-                const depositTxn = await storage.createTransaction({
-                    accountId: account.id,
-                    type: 'deposit',
-                    amount: '2500.00',
-                    description: 'Initial deposit',
-                    referenceNumber: `TXN${Date.now()}${Math.floor(Math.random() * 1000)}`
-                });
-                
-                await storage.updateTransaction(depositTxn.id, { status: 'completed' });
-                
-                console.log(`✅ Created test user: ${user.email}`);
-            }
+            const user = await storage.createUser({
+                ...testUser,
+                password: userPassword
+            });
+            
+            // Create checking account
+            const accountNumber = `CHE${Date.now()}${Math.floor(Math.random() * 1000)}`;
+            const account = await storage.createAccount({
+                userId: user.id,
+                accountType: 'checking',
+                accountNumber
+            });
+            
+            // Add initial balance
+            await storage.updateAccount(account.id, {
+                balance: '1500.00'
+            });
+            
+            console.log(`✅ Created demo user: ${user.email}`);
         }
         
         const finalUsers = await storage.getAllUsers();
@@ -573,36 +563,18 @@ const requireAdmin = async (req, res, next) => {
         // Get user ID from query params, body, or headers
         let userId = req.query.userId || req.body.userId || req.headers['x-user-id'];
         
-        console.log("Admin middleware check:", {
-            method: req.method,
-            path: req.path,
-            userId,
-            query: req.query,
-            hasBody: !!req.body,
-            headers: Object.keys(req.headers)
-        });
-        
         if (!userId) {
-            console.log("Admin middleware: No userId provided");
             return res.status(401).json({ message: "User authentication required" });
         }
         
         const user = await storage.getUser(parseInt(userId));
         if (!user) {
-            console.log("Admin middleware: User not found", userId);
-            const allUsers = await storage.getAllUsers();
-            console.log("Available users:", allUsers.map(u => ({ id: u.id, email: u.email, role: u.role })));
             return res.status(401).json({ message: "User not found" });
         }
         
-        console.log("Admin middleware: User found", { id: user.id, email: user.email, role: user.role });
-        
         if (user.role !== 'admin' && user.role !== 'super_admin') {
-            console.log("Admin middleware: User is not admin", { userId, role: user.role });
             return res.status(403).json({ message: "Admin access required" });
         }
-        
-        console.log("Admin middleware: Access granted");
         req.adminUser = user;
         next();
     } catch (error) {
