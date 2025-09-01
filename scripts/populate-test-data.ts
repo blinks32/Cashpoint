@@ -4,7 +4,7 @@ import { storage } from '../server/storage.js';
 async function populateTestData() {
   try {
     console.log('Populating test data...');
-    
+
     // Create admin user
     const adminPassword = await bcrypt.hash('admin123', 12);
     const adminUser = await storage.createUser({
@@ -14,15 +14,15 @@ async function populateTestData() {
       lastName: 'User',
       phone: '+1234567890'
     });
-    
+
     // Update admin role and KYC status
-    await storage.updateUser(adminUser.id, { 
+    await storage.updateUser(adminUser.id, {
       role: 'admin',
       kycStatus: 'approved'
     });
-    
+
     console.log('✅ Admin user created:', adminUser.email);
-    
+
     // Create test users
     const testUsers = [
       { email: 'john.doe@example.com', firstName: 'John', lastName: 'Doe', phone: '+1234567891' },
@@ -31,15 +31,15 @@ async function populateTestData() {
       { email: 'alice.brown@example.com', firstName: 'Alice', lastName: 'Brown', phone: '+1234567894' },
       { email: 'charlie.wilson@example.com', firstName: 'Charlie', lastName: 'Wilson', phone: '+1234567895' }
     ];
-    
+
     const userPassword = await bcrypt.hash('password123', 12);
-    
+
     for (const userData of testUsers) {
       const user = await storage.createUser({
         ...userData,
         password: userPassword
       });
-      
+
       // Create a checking account for each user
       const accountNumber = `CHE${Date.now()}${Math.floor(Math.random() * 1000)}`;
       const account = await storage.createAccount({
@@ -47,12 +47,12 @@ async function populateTestData() {
         accountType: 'checking',
         accountNumber
       });
-      
+
       // Add some initial balance
       await storage.updateAccount(account.id, {
         balance: (Math.random() * 10000 + 1000).toFixed(2)
       });
-      
+
       // Create some sample transactions
       const transactions = [
         {
@@ -70,34 +70,34 @@ async function populateTestData() {
           referenceNumber: `TXN${Date.now()}${Math.floor(Math.random() * 1000)}`
         }
       ];
-      
+
       for (const txnData of transactions) {
         const transaction = await storage.createTransaction(txnData);
         await storage.updateTransaction(transaction.id, { status: 'completed' });
       }
-      
+
       console.log(`✅ Created user: ${user.email} with account ${accountNumber}`);
     }
-    
+
     // Get final counts
     const allUsers = await storage.getAllUsers();
     const allAccounts = await storage.getAllAccounts();
     const allTransactions = await storage.getAllTransactions();
-    
+
     console.log('\n📊 Test data summary:');
     console.log(`Users: ${allUsers.length}`);
     console.log(`Accounts: ${allAccounts.length}`);
     console.log(`Transactions: ${allTransactions.length}`);
-    
+
     console.log('\n🔑 Admin credentials:');
     console.log('Email: admin@cashpoint.com');
     console.log('Password: admin123');
-    
+
     console.log('\n👥 Test user credentials (all use password: password123):');
     testUsers.forEach(user => {
       console.log(`- ${user.email}`);
     });
-    
+
   } catch (error) {
     console.error('❌ Error populating test data:', error);
   }

@@ -143,84 +143,127 @@ class MemStorage {
 
 const storage = new MemStorage();
 
-// Create default admin user on startup
-async function createDefaultAdmin() {
+// Create default admin user and test data on startup
+async function createDefaultData() {
     try {
-        console.log('Starting admin user creation process...');
+        console.log('Starting data creation process...');
+        
+        // Create admin user
         const adminEmail = 'admin@cashpoint.com';
         const adminPassword = 'admin123';
         
-        // Check if admin already exists
-        const existingAdmin = await storage.getUserByEmail(adminEmail);
-        if (existingAdmin) {
-            console.log('Admin user already exists:', existingAdmin.email, 'Role:', existingAdmin.role);
-            return;
+        let adminUser = await storage.getUserByEmail(adminEmail);
+        if (!adminUser) {
+            console.log('Creating new admin user...');
+            const hashedPassword = await bcrypt.hash(adminPassword, 12);
+            
+            adminUser = await storage.createUser({
+                email: adminEmail,
+                password: hashedPassword,
+                firstName: 'Admin',
+                lastName: 'User',
+                phone: '+1234567890'
+            });
+            
+            await storage.updateUser(adminUser.id, { 
+                role: 'admin',
+                kycStatus: 'approved'
+            });
+            
+            console.log('✅ Admin user created:', adminUser.email);
         }
         
-        console.log('Creating new admin user...');
+        // Create test users if none exist
+        const allUsers = await storage.getAllUsers();
+        if (allUsers.length <= 1) { // Only admin exists
+            console.log('Creating test users...');
+            
+            const testUsers = [
+                { email: 'john.doe@example.com', firstName: 'John', lastName: 'Doe', phone: '+1234567891' },
+                { email: 'jane.smith@example.com', firstName: 'Jane', lastName: 'Smith', phone: '+1234567892' },
+                { email: 'bob.johnson@example.com', firstName: 'Bob', lastName: 'Johnson', phone: '+1234567893' },
+                { email: 'alice.brown@example.com', firstName: 'Alice', lastName: 'Brown', phone: '+1234567894' }
+            ];
+            
+            const userPassword = await bcrypt.hash('password123', 12);
+            
+            for (const userData of testUsers) {
+                const user = await storage.createUser({
+                    ...userData,
+                    password: userPassword
+                });
+                
+                // Create checking account
+                const accountNumber = `CHE${Date.now()}${Math.floor(Math.random() * 1000)}`;
+                const account = await storage.createAccount({
+                    userId: user.id,
+                    accountType: 'checking',
+                    accountNumber
+                });
+                
+                // Add initial balance
+                await storage.updateAccount(account.id, {
+                    balance: (Math.random() * 5000 + 1000).toFixed(2)
+                });
+                
+                // Create sample transactions
+                const depositTxn = await storage.createTransaction({
+                    accountId: account.id,
+                    type: 'deposit',
+                    amount: '2500.00',
+                    description: 'Initial deposit',
+                    referenceNumber: `TXN${Date.now()}${Math.floor(Math.random() * 1000)}`
+                });
+                
+                await storage.updateTransaction(depositTxn.id, { status: 'completed' });
+                
+                console.log(`✅ Created test user: ${user.email}`);
+            }
+        }
         
-        // Hash password
-        const hashedPassword = await bcrypt.hash(adminPassword, 12);
-        console.log('Password hashed successfully');
-        
-        // Create admin user
-        const adminUser = await storage.createUser({
-            email: adminEmail,
-            password: hashedPassword,
-            firstName: 'Admin',
-            lastName: 'User',
-            phone: '+1234567890'
-        });
-        
-        console.log('Admin user created with ID:', adminUser.id);
-        
-        // Update role to admin
-        const updatedUser = await storage.updateUser(adminUser.id, { 
-            role: 'admin',
-            kycStatus: 'approved'
-        });
-        
-        console.log('✅ Default admin user created successfully for Vercel deployment', {
-            id: updatedUser.id,
-            email: updatedUser.email,
-            role: updatedUser.role,
-            kycStatus: updatedUser.kycStatus
-        });
-        
-        // Verify the user was created correctly
-        const verifyUser = await storage.getUserByEmail(adminEmail);
-        console.log('Verification - Admin user in storage:', {
-            id: verifyUser.id,
-            email: verifyUser.email,
-            role: verifyUser.role
-        });
+        const finalUsers = await storage.getAllUsers();
+        console.log(`✅ Data initialization complete. Total users: ${finalUsers.length}`);
         
     } catch (error) {
-        console.error('❌ Error creating default admin user:', error);
-        console.error('Stack trace:', error.stack);
+        console.error('❌ Error creating default data:', error);
     }
 }
 
 const app = express();
 
-// Create admin user on startup
-createDefaultAdmin();
+// Create admin user and test data on startup
+createDefaultData();
 
-// Debug endpoint to check admin user (remove in production)
+// Debug endpoint to check admin user and system status
 app.get("/api/debug/admin", async (req, res) => {
     try {
         const adminUser = await storage.getUserByEmail('admin@cashpoint.com');
         const allUsers = await storage.getAllUsers();
+        const allAccounts = await storage.getAllAccounts();
+        const allTransactions = await storage.getAllTransactions();
+        
         res.json({
             adminExists: !!adminUser,
-            adminUser: adminUser ? { id: adminUser.id, email: adminUser.email, role: adminUser.role } : null,
+            adminUser: adminUser ? { id: adminUser.id, email: adminUser.email, role: adminUser.role, kycStatus: adminUser.kycStatus } : null,
             totalUsers: allUsers.length,
-            allUsers: allUsers.map(u => ({ id: u.id, email: u.email, role: u.role }))
+            totalAccounts: allAccounts.length,
+            totalTransactions: allTransactions.length,
+            allUsers: allUsers.map(u => ({ id: u.id, email: u.email, role: u.role, kycStatus: u.kycStatus })),
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error("Debug endpoint error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
+});
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+    res.json({ 
+        status: "ok", 
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
 });
 
 app.use(express.json());
@@ -232,7 +275,7 @@ app.use(async (req, res, next) => {
         const adminUser = await storage.getUserByEmail('admin@cashpoint.com');
         if (!adminUser) {
             console.log('Admin user not found, creating...');
-            await createDefaultAdmin();
+            await createDefaultData();
         }
     } catch (error) {
         console.error('Error in admin check middleware:', error);
@@ -530,31 +573,41 @@ const requireAdmin = async (req, res, next) => {
         // Get user ID from query params, body, or headers
         let userId = req.query.userId || req.body.userId || req.headers['x-user-id'];
         
+        console.log("Admin middleware check:", {
+            method: req.method,
+            path: req.path,
+            userId,
+            query: req.query,
+            hasBody: !!req.body,
+            headers: Object.keys(req.headers)
+        });
+        
         if (!userId) {
-            console.log("Admin middleware: No userId provided", {
-                query: req.query,
-                body: req.body,
-                headers: req.headers
-            });
+            console.log("Admin middleware: No userId provided");
             return res.status(401).json({ message: "User authentication required" });
         }
         
         const user = await storage.getUser(parseInt(userId));
         if (!user) {
             console.log("Admin middleware: User not found", userId);
+            const allUsers = await storage.getAllUsers();
+            console.log("Available users:", allUsers.map(u => ({ id: u.id, email: u.email, role: u.role })));
             return res.status(401).json({ message: "User not found" });
         }
+        
+        console.log("Admin middleware: User found", { id: user.id, email: user.email, role: user.role });
         
         if (user.role !== 'admin' && user.role !== 'super_admin') {
             console.log("Admin middleware: User is not admin", { userId, role: user.role });
             return res.status(403).json({ message: "Admin access required" });
         }
         
+        console.log("Admin middleware: Access granted");
         req.adminUser = user;
         next();
     } catch (error) {
         console.error("Admin middleware error:", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
 };
 

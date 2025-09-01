@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAdmin } from '../hooks/useAdmin';
+import AdminDebug from '../components/AdminDebug';
 import toast from 'react-hot-toast';
 
 interface User {
@@ -491,6 +492,7 @@ const AdminDashboard = () => {
 
       {/* Main Content */}
       <div className="flex-1 p-8">
+        <AdminDebug />
         {renderContent()}
       </div>
     </div>

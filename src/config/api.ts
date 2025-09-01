@@ -1,6 +1,6 @@
 // API configuration for different environments
 export const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://cashpoint-lemon.vercel.app'
+  ? '' // Use relative URLs in production for Vercel
   : '';
 
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
@@ -14,6 +14,11 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
     ...options,
   };
 
-  const response = await fetch(url, defaultOptions);
-  return response;
+  try {
+    const response = await fetch(url, defaultOptions);
+    return response;
+  } catch (error) {
+    console.error('API Request failed:', { url, error });
+    throw error;
+  }
 };

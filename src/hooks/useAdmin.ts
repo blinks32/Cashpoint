@@ -58,13 +58,19 @@ export const useAdmin = () => {
     const url = new URL(endpoint, window.location.origin);
     url.searchParams.append('userId', user.id.toString());
     
-    return apiRequest(url.toString(), {
+    console.log('Making admin request:', { url: url.toString(), userId: user.id, userRole: user.role });
+    
+    const response = await apiRequest(url.toString(), {
       ...options,
       headers: {
         ...options.headers,
         'X-User-Id': user.id.toString(),
       },
     });
+    
+    console.log('Admin request response:', { status: response.status, ok: response.ok });
+    
+    return response;
   };
 
   const fetchUsers = async () => {
