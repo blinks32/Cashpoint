@@ -1,147 +1,158 @@
 import express from "express";
 import bcrypt from "bcrypt";
 
-// In-memory storage for Vercel (note: this will reset on each deployment)
-class MemStorage {
-    constructor() {
-        this.users = new Map();
-        this.accounts = new Map();
-        this.transactions = new Map();
-        this.currentUserId = 1;
-        this.currentAccountId = 1;
-        this.currentTransactionId = 1;
-    }
+// Try to use database storage, fall back to in-memory if not available
+let storage;
+let usingDatabase = false;
 
-    // User operations
-    async getUser(id) {
-        return this.users.get(id);
-    }
+try {
+    // Try to import database storage
+    const { storage: dbStorage } = await import('./database.js');
+    storage = dbStorage;
+    usingDatabase = true;
+    console.log('✅ Using Neon PostgreSQL database');
+} catch (error) {
+    console.log('⚠️ Database not available, using in-memory storage:', error.message);
+    
+    // Fallback to in-memory storage
+    class MemStorage {
+        constructor() {
+            this.users = new Map();
+            this.accounts = new Map();
+            this.transactions = new Map();
+            this.currentUserId = 1;
+            this.currentAccountId = 1;
+            this.currentTransactionId = 1;
+        }
 
-    async getUserByEmail(email) {
-        return Array.from(this.users.values()).find(
-            (user) => user.email === email
-        );
-    }
+        async getUser(id) {
+            return this.users.get(id);
+        }
 
-    async createUser(insertUser) {
-        const id = this.currentUserId++;
-        const now = new Date();
-        const user = {
-            ...insertUser,
-            id,
-            createdAt: now,
-            updatedAt: now,
-            kycStatus: "pending",
-            role: "user",
-            phone: insertUser.phone || null,
-            dateOfBirth: insertUser.dateOfBirth || null,
-            occupation: insertUser.occupation || null,
-            sex: insertUser.sex || null,
-            maritalStatus: insertUser.maritalStatus || null,
-            address: insertUser.address || null,
-            city: insertUser.city || null,
-            state: insertUser.state || null,
-            zipCode: insertUser.zipCode || null,
-            alternativePhone: insertUser.alternativePhone || null,
-            ssn: insertUser.ssn || null,
-            idNumber: insertUser.idNumber || null,
-            nextOfKinName: insertUser.nextOfKinName || null,
-            nextOfKinPhone: insertUser.nextOfKinPhone || null
-        };
-        this.users.set(id, user);
-        return user;
-    }
+        async getUserByEmail(email) {
+            return Array.from(this.users.values()).find(
+                (user) => user.email === email
+            );
+        }
 
-    async updateUser(id, userData) {
-        const user = this.users.get(id);
-        if (!user) return undefined;
-        const updatedUser = { ...user, ...userData, updatedAt: new Date() };
-        this.users.set(id, updatedUser);
-        return updatedUser;
-    }
+        async createUser(insertUser) {
+            const id = this.currentUserId++;
+            const now = new Date();
+            const user = {
+                ...insertUser,
+                id,
+                createdAt: now,
+                updatedAt: now,
+                kycStatus: "pending",
+                role: "user",
+                phone: insertUser.phone || null,
+                dateOfBirth: insertUser.dateOfBirth || null,
+                occupation: insertUser.occupation || null,
+                sex: insertUser.sex || null,
+                maritalStatus: insertUser.maritalStatus || null,
+                address: insertUser.address || null,
+                city: insertUser.city || null,
+                state: insertUser.state || null,
+                zipCode: insertUser.zipCode || null,
+                alternativePhone: insertUser.alternativePhone || null,
+                ssn: insertUser.ssn || null,
+                idNumber: insertUser.idNumber || null,
+                nextOfKinName: insertUser.nextOfKinName || null,
+                nextOfKinPhone: insertUser.nextOfKinPhone || null
+            };
+            this.users.set(id, user);
+            return user;
+        }
 
-    // Account operations
-    async getAccountsByUserId(userId) {
-        return Array.from(this.accounts.values()).filter(
-            (account) => account.userId === userId
-        );
-    }
+        async updateUser(id, userData) {
+            const user = this.users.get(id);
+            if (!user) return undefined;
+            const updatedUser = { ...user, ...userData, updatedAt: new Date() };
+            this.users.set(id, updatedUser);
+            return updatedUser;
+        }
 
-    async getAccount(id) {
-        return this.accounts.get(id);
-    }
+        async getAccountsByUserId(userId) {
+            return Array.from(this.accounts.values()).filter(
+                (account) => account.userId === userId
+            );
+        }
 
-    async createAccount(insertAccount) {
-        const id = this.currentAccountId++;
-        const now = new Date();
-        const account = {
-            ...insertAccount,
-            id,
-            createdAt: now,
-            updatedAt: now,
-            balance: "0.00",
-            status: "active"
-        };
-        this.accounts.set(id, account);
-        return account;
-    }
+        async getAccount(id) {
+            return this.accounts.get(id);
+        }
 
-    async updateAccount(id, accountData) {
-        const account = this.accounts.get(id);
-        if (!account) return undefined;
-        const updatedAccount = { ...account, ...accountData, updatedAt: new Date() };
-        this.accounts.set(id, updatedAccount);
-        return updatedAccount;
-    }
+        async createAccount(insertAccount) {
+            const id = this.currentAccountId++;
+            const now = new Date();
+            const account = {
+                ...insertAccount,
+                id,
+                createdAt: now,
+                updatedAt: now,
+                balance: "0.00",
+                status: "active"
+            };
+            this.accounts.set(id, account);
+            return account;
+        }
 
-    // Transaction operations
-    async getTransactionsByAccountIds(accountIds) {
-        return Array.from(this.transactions.values()).filter(
-            (transaction) => accountIds.includes(transaction.accountId)
-        );
-    }
+        async updateAccount(id, accountData) {
+            const account = this.accounts.get(id);
+            if (!account) return undefined;
+            const updatedAccount = { ...account, ...accountData, updatedAt: new Date() };
+            this.accounts.set(id, updatedAccount);
+            return updatedAccount;
+        }
 
-    async getTransaction(id) {
-        return this.transactions.get(id);
-    }
+        async getTransactionsByAccountIds(accountIds) {
+            return Array.from(this.transactions.values()).filter(
+                (transaction) => accountIds.includes(transaction.accountId)
+            );
+        }
 
-    async createTransaction(insertTransaction) {
-        const id = this.currentTransactionId++;
-        const now = new Date();
-        const transaction = {
-            ...insertTransaction,
-            id,
-            createdAt: now,
-            updatedAt: now,
-            status: "pending"
-        };
-        this.transactions.set(id, transaction);
-        return transaction;
-    }
+        async getTransaction(id) {
+            return this.transactions.get(id);
+        }
 
-    async updateTransaction(id, transactionData) {
-        const transaction = this.transactions.get(id);
-        if (!transaction) return undefined;
-        const updatedTransaction = { ...transaction, ...transactionData, updatedAt: new Date() };
-        this.transactions.set(id, updatedTransaction);
-        return updatedTransaction;
-    }
+        async createTransaction(insertTransaction) {
+            const id = this.currentTransactionId++;
+            const now = new Date();
+            const transaction = {
+                ...insertTransaction,
+                id,
+                createdAt: now,
+                updatedAt: now,
+                status: "pending"
+            };
+            this.transactions.set(id, transaction);
+            return transaction;
+        }
 
-    // Admin operations
-    async getAllUsers() {
-        return Array.from(this.users.values());
-    }
+        async updateTransaction(id, transactionData) {
+            const transaction = this.transactions.get(id);
+            if (!transaction) return undefined;
+            const updatedTransaction = { ...transaction, ...transactionData, updatedAt: new Date() };
+            this.transactions.set(id, updatedTransaction);
+            return updatedTransaction;
+        }
 
-    async getAllAccounts() {
-        return Array.from(this.accounts.values());
-    }
+        async getAllUsers() {
+            return Array.from(this.users.values());
+        }
 
-    async getAllTransactions() {
-        return Array.from(this.transactions.values());
+        async getAllAccounts() {
+            return Array.from(this.accounts.values());
+        }
+
+        async getAllTransactions() {
+            return Array.from(this.transactions.values());
+        }
     }
+    
+    storage = new MemStorage();
+    usingDatabase = false;
 }
-
-const storage = new MemStorage();
 
 // Create default admin user and test data on startup
 async function createDefaultData() {
@@ -197,6 +208,8 @@ app.get("/api/debug/admin", async (req, res) => {
         const allTransactions = await storage.getAllTransactions();
         
         res.json({
+            databaseType: usingDatabase ? 'Neon PostgreSQL' : 'In-Memory (Temporary)',
+            databaseUrl: process.env.DATABASE_URL ? 'Configured' : 'Not configured',
             adminExists: !!adminUser,
             adminUser: adminUser ? { id: adminUser.id, email: adminUser.email, role: adminUser.role, kycStatus: adminUser.kycStatus } : null,
             totalUsers: allUsers.length,
