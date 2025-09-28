@@ -62,7 +62,7 @@ export const useAdmin = () => {
       ...options,
       headers: {
         ...options.headers,
-        'X-User-Id': user.id.toString(),
+        'x-user-id': user.id.toString(),
       },
     });
     
