@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DollarSign, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import EmailVerification from '../components/EmailVerification';
 
 const SignUp = () => {
-  const { signUp, user } = useAuth();
+  const { signUp, verifyEmail, resendCode, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -39,18 +42,53 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      await signUp(formData.email, formData.password, {
+      const result = await signUp(formData.email, formData.password, {
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone
       });
-      navigate('/kyc');
+      
+      // Check if verification is required
+      if (result?.requiresVerification) {
+        setUserEmail(formData.email);
+        setShowVerification(true);
+      } else {
+        // Old flow - shouldn't happen but handle it
+        navigate('/kyc');
+      }
     } catch (error) {
       console.error('Sign up error:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleVerify = async (code: string) => {
+    await verifyEmail(userEmail, code);
+    navigate('/kyc');
+  };
+
+  const handleResend = async () => {
+    await resendCode(userEmail);
+  };
+
+  const handleBackToSignup = () => {
+    setShowVerification(false);
+    setUserEmail('');
+  };
+
+  // Show verification screen if needed
+  if (showVerification) {
+    return (
+      <EmailVerification
+        email={userEmail}
+        onVerify={handleVerify}
+        onResend={handleResend}
+        onBack={handleBackToSignup}
+        loading={loading}
+      />
+    );
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
