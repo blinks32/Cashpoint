@@ -113,22 +113,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountNumber,
       });
 
-      // Generate verification code
-      const code = generateVerificationCode();
-      const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
-      
-      // Store verification code
-      verificationCodes.set(email, { code, expires, userId: user.id });
-      
-      // Send verification email
-      await sendVerificationEmail(email, code, user.firstName);
-
-      // Return pending verification status (don't log user in yet)
-      res.status(201).json({ 
-        requiresVerification: true, 
-        email: email,
-        message: "Account created! Please check your email for verification code." 
-      });
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json({ user: userWithoutPassword });
     } catch (error) {
       console.error("Signup error:", error);
       res.status(500).json({ message: "Internal server error" });

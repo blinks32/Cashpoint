@@ -17,10 +17,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, userData: any) => Promise<any>;
-  signIn: (email: string, password: string) => Promise<any>;
-  verifyEmail: (email: string, code: string) => Promise<void>;
-  resendCode: (email: string) => Promise<void>;
+  signUp: (email: string, password: string, userData: any) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
   setUserDirectly: (user: User) => void;
@@ -72,17 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.message || 'Signup failed');
       }
 
-      // Don't set user yet - they need to verify email first
-      if (data.requiresVerification) {
-        toast.success('Account created! Check your email for verification code.');
-        return data; // Return data with requiresVerification flag
-      }
-
-      // Fallback for old flow (shouldn't happen)
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
       toast.success('Account created successfully!');
-      return data;
     } catch (error: any) {
       toast.error(error.message);
       throw error;
@@ -105,62 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.message || 'Sign in failed');
       }
 
-      // Check if verification is required
-      if (data.requiresVerification) {
-        toast.success('Verification code sent to your email');
-        return data; // Return data with requiresVerification flag
-      }
-
       console.log('User signed in successfully:', data.user);
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
       toast.success('Signed in successfully!');
-      return data;
-    } catch (error: any) {
-      toast.error(error.message);
-      throw error;
-    }
-  };
-
-  const verifyEmail = async (email: string, code: string) => {
-    try {
-      const response = await apiRequest('/api/auth/verify', {
-        method: 'POST',
-        body: JSON.stringify({
-          email,
-          code
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Verification failed');
-      }
-
-      setUser(data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      toast.success('Email verified successfully!');
-    } catch (error: any) {
-      toast.error(error.message);
-      throw error;
-    }
-  };
-
-  const resendCode = async (email: string) => {
-    try {
-      const response = await apiRequest('/api/auth/resend-code', {
-        method: 'POST',
-        body: JSON.stringify({ email })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to resend code');
-      }
-
-      toast.success('Verification code sent!');
     } catch (error: any) {
       toast.error(error.message);
       throw error;
@@ -215,8 +153,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     signUp,
     signIn,
-    verifyEmail,
-    resendCode,
     signOut,
     updateProfile,
     setUserDirectly
