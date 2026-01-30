@@ -147,7 +147,9 @@ export class MemStorage implements IStorage {
       id,
       createdAt: now,
       updatedAt: now,
-      status: 'pending'
+      status: 'pending',
+      paymentMethod: insertTransaction.paymentMethod || null,
+      paymentDetails: insertTransaction.paymentDetails || null,
     };
     this.transactions.set(id, transaction);
     return transaction;

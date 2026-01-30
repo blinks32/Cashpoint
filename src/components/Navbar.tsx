@@ -21,10 +21,6 @@ const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, setIsMenuOpen }) => {
           </Link>
           
           <div className="hidden md:flex items-center space-x-8">
-            <Link to="#accounts" className="text-gray-300 hover:text-yellow-400 transition-colors">Accounts</Link>
-            <Link to="#services" className="text-gray-300 hover:text-yellow-400 transition-colors">Services</Link>
-            <Link to="#about" className="text-gray-300 hover:text-yellow-400 transition-colors">About</Link>
-            <Link to="#contact" className="text-gray-300 hover:text-yellow-400 transition-colors">Contact</Link>
             {user ? (
               <>
                 <Link to="/dashboard" className="text-gray-300 hover:text-yellow-400 transition-colors">Dashboard</Link>
@@ -60,15 +56,20 @@ const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, setIsMenuOpen }) => {
       {isMenuOpen && (
         <div className="md:hidden bg-gray-800 border-t border-gray-700">
           <div className="px-2 pt-2 pb-3 space-y-1">
-            <Link to="#accounts" className="block px-3 py-2 text-gray-300 hover:text-yellow-400">Accounts</Link>
-            <Link to="#services" className="block px-3 py-2 text-gray-300 hover:text-yellow-400">Services</Link>
-            <Link to="#about" className="block px-3 py-2 text-gray-300 hover:text-yellow-400">About</Link>
-            <Link to="#contact" className="block px-3 py-2 text-gray-300 hover:text-yellow-400">Contact</Link>
             {user ? (
               <>
-                <Link to="/dashboard" className="block px-3 py-2 text-gray-300 hover:text-yellow-400">Dashboard</Link>
+                <Link 
+                  to="/dashboard" 
+                  className="block px-3 py-2 text-gray-300 hover:text-yellow-400"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
                 <button 
-                  onClick={signOut}
+                  onClick={() => {
+                    signOut();
+                    setIsMenuOpen(false);
+                  }}
                   className="block px-3 py-2 text-gray-300 hover:text-yellow-400 text-left w-full"
                 >
                   Sign Out
@@ -76,8 +77,20 @@ const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, setIsMenuOpen }) => {
               </>
             ) : (
               <>
-                <Link to="/login" className="block px-3 py-2 text-gray-300 hover:text-yellow-400">Login</Link>
-                <Link to="/signup" className="block px-3 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold">Get Started</Link>
+                <Link 
+                  to="/login" 
+                  className="block px-3 py-2 text-gray-300 hover:text-yellow-400"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link 
+                  to="/signup" 
+                  className="block px-3 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Get Started
+                </Link>
               </>
             )}
           </div>

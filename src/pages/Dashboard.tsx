@@ -44,10 +44,10 @@ const Dashboard = () => {
   const [transferToAccount, setTransferToAccount] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
-  const checkingAccount = accounts.find(acc => acc.account_type === 'checking');
-  const savingsAccount = accounts.find(acc => acc.account_type === 'savings');
-  const investmentAccount = accounts.find(acc => acc.account_type === 'investment');
+  const totalBalance = accounts.reduce((sum, account) => sum + parseFloat(account.balance || '0'), 0);
+  const checkingAccount = accounts.find(acc => acc.accountType === 'checking');
+  const savingsAccount = accounts.find(acc => acc.accountType === 'savings');
+  const investmentAccount = accounts.find(acc => acc.accountType === 'investment');
 
   const handleDeposit = async () => {
     if (!selectedAccount || !amount || !description) {
@@ -56,7 +56,12 @@ const Dashboard = () => {
     }
 
     try {
-      await createTransaction(selectedAccount, 'deposit', parseFloat(amount), description);
+      await createTransaction(
+        parseInt(selectedAccount),
+        'deposit',
+        parseFloat(amount),
+        description
+      );
       setShowDepositModal(false);
       setAmount('');
       setDescription('');
@@ -73,7 +78,12 @@ const Dashboard = () => {
     }
 
     try {
-      await createTransaction(selectedAccount, 'withdrawal', parseFloat(amount), description);
+      await createTransaction(
+        parseInt(selectedAccount),
+        'withdrawal',
+        parseFloat(amount),
+        description
+      );
       setShowWithdrawModal(false);
       setAmount('');
       setDescription('');
@@ -95,7 +105,12 @@ const Dashboard = () => {
     }
 
     try {
-      await transferFunds(selectedAccount, transferToAccount, parseFloat(amount), description);
+      await transferFunds(
+        parseInt(selectedAccount),
+        parseInt(transferToAccount),
+        parseFloat(amount),
+        description
+      );
       setShowTransferModal(false);
       setAmount('');
       setDescription('');
@@ -163,7 +178,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Checking</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${checkingAccount?.balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
+                      ${parseFloat(checkingAccount?.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
                     <p className="text-sm text-blue-400">Available now</p>
                   </div>
@@ -176,7 +191,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Savings</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${savingsAccount?.balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
+                      ${parseFloat(savingsAccount?.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
                     <p className="text-sm text-green-400">4.5% APY</p>
                   </div>
@@ -189,7 +204,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Investments</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${investmentAccount?.balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
+                      ${parseFloat(investmentAccount?.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
                     <p className="text-sm text-purple-400">Optional</p>
                   </div>
@@ -201,7 +216,7 @@ const Dashboard = () => {
             {/* Quick Actions */}
             <div className="bg-gray-800 p-4 lg:p-6 rounded-xl border border-gray-700">
               <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
                 <button
                   onClick={() => setShowDepositModal(true)}
                   className="flex flex-col lg:flex-row items-center space-y-2 lg:space-y-0 lg:space-x-3 p-3 lg:p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
@@ -222,10 +237,6 @@ const Dashboard = () => {
                 >
                   <Send className="h-5 w-5 lg:h-6 lg:w-6 text-purple-400" />
                   <span className="text-white text-sm lg:text-base">Transfer</span>
-                </button>
-                <button className="flex flex-col lg:flex-row items-center space-y-2 lg:space-y-0 lg:space-x-3 p-3 lg:p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-                  <CreditCard className="h-5 w-5 lg:h-6 lg:w-6 text-yellow-400" />
-                  <span className="text-white text-sm lg:text-base">Pay Bills</span>
                 </button>
               </div>
             </div>
@@ -308,13 +319,13 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p className="text-white font-medium text-sm lg:text-base">{transaction.description}</p>
-                          <p className="text-gray-400 text-xs lg:text-sm">{new Date(transaction.created_at).toLocaleDateString()}</p>
+                          <p className="text-gray-400 text-xs lg:text-sm">{new Date(transaction.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className={`font-semibold text-sm lg:text-base ${transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
                           }`}>
-                          {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          {transaction.type === 'deposit' ? '+' : '-'}${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </p>
                         <p className={`text-xs lg:text-sm ${transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
                           }`}>
@@ -380,7 +391,7 @@ const Dashboard = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => {
-                          setSelectedAccount(account.id);
+                          setSelectedAccount(account.id.toString());
                           setShowDepositModal(true);
                         }}
                         className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors text-sm lg:text-base"
@@ -389,7 +400,7 @@ const Dashboard = () => {
                       </button>
                       <button
                         onClick={() => {
-                          setSelectedAccount(account.id);
+                          setSelectedAccount(account.id.toString());
                           setShowWithdrawModal(true);
                         }}
                         className="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-500 transition-colors text-sm lg:text-base"
@@ -409,14 +420,6 @@ const Dashboard = () => {
           <div className="space-y-4 lg:space-y-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <h2 className="text-xl lg:text-2xl font-bold text-white">Transaction History</h2>
-              <div className="flex space-x-2">
-                <button className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm lg:text-base">
-                  Filter
-                </button>
-                <button className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-300 transition-colors text-sm lg:text-base">
-                  Export
-                </button>
-              </div>
             </div>
 
             <div className="bg-gray-800 p-4 lg:p-6 rounded-xl border border-gray-700">
@@ -444,14 +447,14 @@ const Dashboard = () => {
                         <div>
                           <p className="text-white font-medium">{transaction.description}</p>
                           <p className="text-gray-400 text-sm">
-                            {new Date(transaction.created_at).toLocaleDateString()} • {transaction.reference_number}
+                            {new Date(transaction.createdAt).toLocaleDateString()} • {transaction.referenceNumber}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className={`font-semibold ${transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
                           }`}>
-                          {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          {transaction.type === 'deposit' ? '+' : '-'}${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </p>
                         <p className={`text-sm ${transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
                           }`}>
@@ -527,10 +530,6 @@ const Dashboard = () => {
             <History size={16} />
             <span className="text-sm">Transactions</span>
           </button>
-          <button className="flex items-center space-x-2 px-3 py-2 rounded-lg whitespace-nowrap text-gray-300 hover:bg-gray-700 transition-colors">
-            <Settings size={16} />
-            <span className="text-sm">Settings</span>
-          </button>
         </div>
       </div>
 
@@ -574,15 +573,6 @@ const Dashboard = () => {
               </button>
 
               <button
-                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-gray-300 hover:bg-gray-700 transition-colors"
-              >
-                <Settings size={20} />
-                <span>Settings</span>
-              </button>
-
-
-
-              <button
                 onClick={handleSignOut}
                 className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-red-400 hover:bg-gray-700 transition-colors"
               >
@@ -614,7 +604,7 @@ const Dashboard = () => {
                 >
                   <option value="">Select an account</option>
                   {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
+                    <option key={account.id} value={account.id.toString()}>
                       {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'}
                     </option>
                   ))}
@@ -676,7 +666,7 @@ const Dashboard = () => {
                 >
                   <option value="">Select an account</option>
                   {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
+                    <option key={account.id} value={account.id.toString()}>
                       {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${parseFloat(account.balance || '0').toFixed(2)})
                     </option>
                   ))}
@@ -738,7 +728,7 @@ const Dashboard = () => {
                 >
                   <option value="">Select source account</option>
                   {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
+                    <option key={account.id} value={account.id.toString()}>
                       {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${parseFloat(account.balance || '0').toFixed(2)})
                     </option>
                   ))}
@@ -752,8 +742,8 @@ const Dashboard = () => {
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                 >
                   <option value="">Select destination account</option>
-                  {accounts.filter(account => account.id !== selectedAccount).map((account) => (
-                    <option key={account.id} value={account.id}>
+                  {accounts.filter(account => account.id.toString() !== selectedAccount).map((account) => (
+                    <option key={account.id} value={account.id.toString()}>
                       {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'}
                     </option>
                   ))}

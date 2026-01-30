@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useAdmin } from '../hooks/useAdmin';
 import toast from 'react-hot-toast';
+import { AdminTransactionModal } from '../components/AdminTransactionModal';
 
 interface User {
   id: number;
@@ -75,6 +76,14 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedAccount, setExpandedAccount] = useState<number | null>(null);
+  const [transactionModalOpen, setTransactionModalOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<{
+    id: number;
+    accountNumber: string;
+    accountType: string;
+    balance: string;
+    userId: number;
+  } | null>(null);
 
   // Check if user is admin
   useEffect(() => {
@@ -126,6 +135,25 @@ const AdminDashboard = () => {
 
   const getUserForAccount = (userId: number) => {
     return users.find(user => user.id === userId);
+  };
+
+  const openTransactionModal = (account: Account) => {
+    setSelectedAccount({
+      id: account.id,
+      accountNumber: account.accountNumber,
+      accountType: account.accountType,
+      balance: account.balance || '0',
+      userId: account.userId,
+    });
+    setTransactionModalOpen(true);
+  };
+
+  const handleTransactionSuccess = async () => {
+    await Promise.all([
+      fetchAccounts(),
+      fetchTransactions(),
+      fetchStats(),
+    ]);
   };
 
   const getAccountTransactions = (accountId: number) => {
@@ -425,6 +453,13 @@ const AdminDashboard = () => {
                       </div>
                       
                       <div className="flex space-x-2">
+                        <button
+                          onClick={() => openTransactionModal(account)}
+                          className="text-yellow-400 hover:text-yellow-300 p-2 rounded-lg hover:bg-gray-700"
+                          title="Manage Transactions"
+                        >
+                          <DollarSign size={16} />
+                        </button>
                         <button
                           onClick={() => setExpandedAccount(isExpanded ? null : account.id)}
                           className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-gray-700"
@@ -728,8 +763,24 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex">
-      {/* Sidebar */}
+    <>
+      {/* Transaction Modal */}
+      {selectedAccount && (
+        <AdminTransactionModal
+          isOpen={transactionModalOpen}
+          onClose={() => setTransactionModalOpen(false)}
+          account={selectedAccount}
+          user={getUserForAccount(selectedAccount.userId) || {
+            firstName: 'Unknown',
+            lastName: 'User',
+            email: 'unknown@example.com',
+          }}
+          onSuccess={handleTransactionSuccess}
+        />
+      )}
+
+      <div className="min-h-screen bg-gray-900 flex">
+        {/* Sidebar */}
       <div className="w-64 bg-gray-800 border-r border-gray-700">
         <div className="p-6">
           <div className="flex items-center space-x-2 mb-8">
@@ -791,11 +842,12 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-8">
-        {renderContent()}
+        {/* Main Content */}
+        <div className="flex-1 p-8">
+          {renderContent()}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

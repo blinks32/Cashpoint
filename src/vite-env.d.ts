@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY: string
   readonly VITE_SUPABASE_SERVICE_ROLE_KEY: string
   readonly VITE_TAWK_TO_PROPERTY_ID: string
+  readonly VITE_STRIPE_PUBLISHABLE_KEY: string
 }
 
 interface ImportMeta {

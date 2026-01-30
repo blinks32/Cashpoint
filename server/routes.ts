@@ -1,9 +1,85 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import bcrypt from "bcrypt";
+import Stripe from "stripe";
 import { storage } from "./storage";
 import { insertUserSchema, insertAccountSchema, insertTransactionSchema } from "@shared/schema";
 import { z } from "zod";
+
+// Initialize Stripe
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-12-15.clover' })
+  : null;
+
+// In-memory store for verification codes (in production, use Redis or database)
+const verificationCodes = new Map<string, { code: string; expires: number; userId: number }>();
+
+function generateVerificationCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function sendVerificationEmail(email: string, code: string, firstName: string): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV] Verification code for ${email}: ${code}`);
+    return true;
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'CashPoint Security <security@cashpoint.com>',
+        to: [email],
+        subject: 'Your CashPoint Verification Code',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb;">
+            <div style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%); padding: 40px; text-align: center;">
+              <h1 style="color: #fbbf24; margin: 0; font-size: 28px;">CashPoint</h1>
+              <p style="color: #e5e7eb; margin: 10px 0 0 0;">Secure Banking</p>
+            </div>
+            
+            <div style="padding: 40px; background: white;">
+              <h2 style="color: #1f2937; margin-bottom: 20px;">Hello ${firstName},</h2>
+              
+              <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+                Your verification code for signing in to CashPoint is:
+              </p>
+              
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1f2937;">${code}</span>
+              </div>
+              
+              <p style="color: #6b7280; font-size: 14px; margin-bottom: 20px;">
+                This code will expire in 10 minutes. If you didn't request this code, please ignore this email or contact support if you have concerns.
+              </p>
+              
+              <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="color: #92400e; margin: 0; font-size: 14px;">
+                  <strong>Security Tip:</strong> Never share this code with anyone. CashPoint employees will never ask for your verification code.
+                </p>
+              </div>
+            </div>
+            
+            <div style="background: #1f2937; padding: 20px; text-align: center;">
+              <p style="color: #9ca3af; margin: 0; font-size: 12px;">
+                © ${new Date().getFullYear()} CashPoint Financial Services. All rights reserved.
+              </p>
+            </div>
+          </div>
+        `,
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Failed to send verification email:', error);
+    return false;
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
@@ -60,11 +136,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
+      // Generate verification code
+      const code = generateVerificationCode();
+      const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+      
+      // Store verification code
+      verificationCodes.set(email, { code, expires, userId: user.id });
+      
+      // Send verification email
+      await sendVerificationEmail(email, code, user.firstName);
+      
+      // Return pending verification status
+      res.json({ 
+        requiresVerification: true, 
+        email: email,
+        message: "Verification code sent to your email" 
+      });
+    } catch (error) {
+      console.error("Signin error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Verify email code and complete sign in
+  app.post("/api/auth/verify", async (req, res) => {
+    try {
+      const { email, code } = req.body;
+      
+      const stored = verificationCodes.get(email);
+      if (!stored) {
+        return res.status(400).json({ message: "No verification pending. Please sign in again." });
+      }
+
+      if (Date.now() > stored.expires) {
+        verificationCodes.delete(email);
+        return res.status(400).json({ message: "Verification code expired. Please sign in again." });
+      }
+
+      if (stored.code !== code) {
+        return res.status(400).json({ message: "Invalid verification code" });
+      }
+
+      // Code is valid, get user and complete sign in
+      const user = await storage.getUser(stored.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Clean up verification code
+      verificationCodes.delete(email);
+
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword });
     } catch (error) {
-      console.error("Signin error:", error);
+      console.error("Verify error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Resend verification code
+  app.post("/api/auth/resend-code", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Generate new verification code
+      const code = generateVerificationCode();
+      const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+      
+      // Store verification code
+      verificationCodes.set(email, { code, expires, userId: user.id });
+      
+      // Send verification email
+      await sendVerificationEmail(email, code, user.firstName);
+      
+      res.json({ message: "Verification code sent" });
+    } catch (error) {
+      console.error("Resend code error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -274,7 +427,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
       
-      req.adminUser = user;
+      // Attach admin user to request
+      (req as any).adminUser = user;
       next();
     } catch (error) {
       console.error("Admin middleware error:", error);
@@ -347,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Only super_admin can create other admins
-      if (role === 'admin' && req.adminUser.role !== 'super_admin') {
+      if (role === 'admin' && (req as any).adminUser.role !== 'super_admin') {
         return res.status(403).json({ message: "Super admin access required" });
       }
       
@@ -403,6 +557,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       console.error("Get admin stats error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Admin transaction management
+  app.post("/api/admin/transactions", requireAdmin, async (req, res) => {
+    try {
+      const { accountId, type, amount, description, paymentMethod, paymentDetails } = req.body;
+      
+      // Validate inputs
+      if (!accountId || !type || !amount || amount <= 0) {
+        return res.status(400).json({ message: "Invalid transaction data" });
+      }
+
+      // Get account
+      const account = await storage.getAccount(parseInt(accountId));
+      if (!account) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+
+      // Check balance for withdrawals
+      if ((type === 'withdrawal' || type === 'payment') && parseFloat(account.balance || '0') < amount) {
+        return res.status(400).json({ message: "Insufficient funds" });
+      }
+
+      // Process card payment with Stripe if applicable
+      if (paymentMethod === 'card' && type === 'deposit' && stripe) {
+        try {
+          const details = JSON.parse(paymentDetails);
+          
+          // Create a payment intent
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100), // Convert to cents
+            currency: 'usd',
+            payment_method: details.stripePaymentMethodId,
+            confirm: true,
+            automatic_payment_methods: {
+              enabled: true,
+              allow_redirects: 'never',
+            },
+            description: `Deposit to account ${account.accountNumber}`,
+          });
+
+          if (paymentIntent.status !== 'succeeded') {
+            return res.status(400).json({ 
+              message: "Card payment failed. Please check your card details and try again." 
+            });
+          }
+
+          // Add Stripe payment intent ID to payment details
+          const updatedDetails = {
+            ...details,
+            stripePaymentIntentId: paymentIntent.id,
+            cardBrand: paymentIntent.payment_method_types[0],
+          };
+          
+          // Update payment details with Stripe info
+          req.body.paymentDetails = JSON.stringify(updatedDetails);
+        } catch (stripeError: any) {
+          console.error("Stripe error:", stripeError);
+          
+          // Provide user-friendly error messages
+          let errorMessage = "Card payment failed";
+          if (stripeError.type === 'StripeCardError') {
+            errorMessage = stripeError.message || "Your card was declined. Please check your card details.";
+          } else if (stripeError.code === 'card_declined') {
+            errorMessage = "Your card was declined. Please try a different card.";
+          } else if (stripeError.code === 'expired_card') {
+            errorMessage = "Your card has expired. Please use a different card.";
+          } else if (stripeError.code === 'incorrect_cvc') {
+            errorMessage = "The card's security code (CVC) is incorrect.";
+          } else if (stripeError.code === 'processing_error') {
+            errorMessage = "An error occurred while processing your card. Please try again.";
+          }
+          
+          return res.status(400).json({ message: errorMessage });
+        }
+      }
+
+      // Validate bank details if applicable
+      if (paymentMethod === 'bank') {
+        try {
+          const details = JSON.parse(paymentDetails);
+          if (!details.bank || !details.bank.accountNumber || !details.bank.routingNumber) {
+            return res.status(400).json({ message: "Invalid bank account details" });
+          }
+          
+          // Validate routing number format (9 digits)
+          if (!/^\d{9}$/.test(details.bank.routingNumber)) {
+            return res.status(400).json({ message: "Invalid routing number. Must be 9 digits." });
+          }
+        } catch (parseError) {
+          return res.status(400).json({ message: "Invalid payment details format" });
+        }
+      }
+
+      // Generate reference number
+      const referenceNumber = `TXN${Date.now()}${Math.floor(Math.random() * 10000)}`;
+
+      // Create transaction
+      const transaction = await storage.createTransaction({
+        accountId: parseInt(accountId),
+        type,
+        amount: amount.toString(),
+        description: description || `Admin ${type}`,
+        referenceNumber,
+        paymentMethod: paymentMethod || 'account',
+        paymentDetails: paymentDetails || null,
+      });
+
+      // Update account balance
+      let newBalance: number;
+      if (type === 'deposit') {
+        newBalance = parseFloat(account.balance || '0') + amount;
+      } else {
+        newBalance = parseFloat(account.balance || '0') - amount;
+      }
+
+      await storage.updateAccount(parseInt(accountId), {
+        balance: newBalance.toFixed(2),
+      });
+
+      // Mark transaction as completed
+      const completedTransaction = await storage.updateTransaction(transaction.id, {
+        status: 'completed',
+      });
+
+      res.status(201).json(completedTransaction);
+    } catch (error) {
+      console.error("Admin transaction error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
