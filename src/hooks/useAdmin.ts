@@ -29,7 +29,7 @@ interface User {
 interface Account {
   id: string;
   userId: string;
-  accountType: 'checking' | 'savings' | 'investment';
+  accountType: 'bitcoin' | 'ethereum' | 'usdt';
   accountNumber: string;
   balance: number;
   status: 'active' | 'inactive' | 'frozen';

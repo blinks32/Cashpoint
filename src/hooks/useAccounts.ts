@@ -16,7 +16,7 @@ import { db } from '../lib/firebase';
 export interface Account {
   id: string;
   userId: string;
-  accountType: 'checking' | 'savings' | 'investment';
+  accountType: 'bitcoin' | 'ethereum' | 'usdt';
   accountNumber: string;
   balance: number;
   createdAt: any;
@@ -57,13 +57,20 @@ export const useAccounts = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const createAccount = async (accountType: 'checking' | 'savings' | 'investment') => {
+  const createAccount = async (accountType: 'bitcoin' | 'ethereum' | 'usdt') => {
     try {
       if (!user) throw new Error('No user logged in');
 
-      // Generate a realistic 10-digit account number based on type
-      const prefix = accountType === 'checking' ? '10' : accountType === 'savings' ? '20' : '30';
-      const accountNumber = prefix + Math.floor(Math.random() * 90000000 + 10000000).toString();
+      // Generate a realistic Crypto ID based on type
+      let accountNumber = '';
+      if (accountType === 'ethereum' || accountType === 'usdt') {
+        const hex = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        accountNumber = '0x' + hex;
+      } else {
+        const chars = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+        const addr = Array.from({length: 38}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        accountNumber = 'bc1q' + addr;
+      }
 
       const newAccount: Omit<Account, 'id'> = {
         userId: user.id,

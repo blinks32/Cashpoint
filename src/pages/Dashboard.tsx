@@ -62,6 +62,27 @@ const Dashboard = () => {
   const [transferAccountNumber, setTransferAccountNumber] = useState('');
   const [beneficiaryName, setBeneficiaryName] = useState('');
   const [lookingUpBeneficiary, setLookingUpBeneficiary] = useState(false);
+  const [cryptoPrices, setCryptoPrices] = useState<Record<string, number>>({ bitcoin: 0, ethereum: 0, usdt: 1 });
+  const [isProcessingCrypto, setIsProcessingCrypto] = useState(false);
+
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether&vs_currencies=usd');
+        const data = await response.json();
+        setCryptoPrices({
+          bitcoin: data.bitcoin?.usd || 0,
+          ethereum: data.ethereum?.usd || 0,
+          usdt: data.tether?.usd || 1,
+        });
+      } catch (error) {
+        console.error('Failed to fetch crypto prices', error);
+      }
+    };
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -78,9 +99,9 @@ const Dashboard = () => {
   }, [user]);
 
   const totalBalance = accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
-  const checkingAccount = accounts.find(acc => acc.accountType === 'checking');
-  const savingsAccount = accounts.find(acc => acc.accountType === 'savings');
-  const investmentAccount = accounts.find(acc => acc.accountType === 'investment');
+  const bitcoinAccount = accounts.find(acc => acc.accountType === 'bitcoin');
+  const ethereumAccount = accounts.find(acc => acc.accountType === 'ethereum');
+  const usdtAccount = accounts.find(acc => acc.accountType === 'usdt');
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -136,19 +157,30 @@ const Dashboard = () => {
       return;
     }
 
+    const account = accounts.find(a => a.id === selectedAccount);
+    if (!account) return;
+
+    setIsProcessingCrypto(true);
     try {
+      const price = cryptoPrices[account.accountType] || 1;
+      const usdAmount = parseFloat(amount) * price;
+
       await createTransaction(
         selectedAccount,
         'deposit',
-        parseFloat(amount),
-        description
+        usdAmount,
+        `${description} (${amount} ${account.accountType.toUpperCase()})`
       );
       setShowDepositModal(false);
       setAmount('');
       setDescription('');
       setSelectedAccount('');
+      toast.success(`Successfully deposited ${amount} ${account.accountType.toUpperCase()}`);
     } catch (error) {
       console.error('Deposit error:', error);
+      toast.error('Failed to process crypto deposit');
+    } finally {
+      setIsProcessingCrypto(false);
     }
   };
 
@@ -158,19 +190,30 @@ const Dashboard = () => {
       return;
     }
 
+    const account = accounts.find(a => a.id === selectedAccount);
+    if (!account) return;
+
+    setIsProcessingCrypto(true);
     try {
+      const price = cryptoPrices[account.accountType] || 1;
+      const usdAmount = parseFloat(amount) * price;
+
       await createTransaction(
         selectedAccount,
         'withdrawal',
-        parseFloat(amount),
-        description
+        usdAmount,
+        `${description} (${amount} ${account.accountType.toUpperCase()})`
       );
       setShowWithdrawModal(false);
       setAmount('');
       setDescription('');
       setSelectedAccount('');
+      toast.success(`Successfully withdrew ${amount} ${account.accountType.toUpperCase()}`);
     } catch (error) {
       console.error('Withdrawal error:', error);
+      toast.error('Failed to process crypto withdrawal');
+    } finally {
+      setIsProcessingCrypto(false);
     }
   };
 
@@ -456,19 +499,19 @@ const Dashboard = () => {
                 <p className="text-gray-400 text-sm">Manage your bank accounts and view balances</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
-                {!accounts.find(a => a.accountType === 'checking') && (
-                  <button onClick={() => createAccount('checking')} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-500 transition-colors flex items-center space-x-1">
-                    <Plus size={16} /><span>Checking</span>
+                {!accounts.find(a => a.accountType === 'bitcoin') && (
+                  <button onClick={() => createAccount('bitcoin')} className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-500 transition-colors flex items-center space-x-1">
+                    <Plus size={16} /><span>Bitcoin Wallet</span>
                   </button>
                 )}
-                {!accounts.find(a => a.accountType === 'savings') && (
-                  <button onClick={() => createAccount('savings')} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-500 transition-colors flex items-center space-x-1">
-                    <Plus size={16} /><span>Savings</span>
+                {!accounts.find(a => a.accountType === 'ethereum') && (
+                  <button onClick={() => createAccount('ethereum')} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-500 transition-colors flex items-center space-x-1">
+                    <Plus size={16} /><span>Ethereum Wallet</span>
                   </button>
                 )}
-                {!accounts.find(a => a.accountType === 'investment') && (
-                  <button onClick={() => createAccount('investment')} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-500 transition-colors flex items-center space-x-1">
-                    <Plus size={16} /><span>Investment</span>
+                {!accounts.find(a => a.accountType === 'usdt') && (
+                  <button onClick={() => createAccount('usdt')} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-500 transition-colors flex items-center space-x-1">
+                    <Plus size={16} /><span>USDT Wallet</span>
                   </button>
                 )}
               </div>
@@ -481,29 +524,29 @@ const Dashboard = () => {
             ) : accounts.length === 0 ? (
               <div className="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center">
                 <CreditCard size={48} className="text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">No Accounts Yet</h3>
-                <p className="text-gray-400 mb-6">Open your first checking account to start banking.</p>
+                <h3 className="text-xl font-semibold text-white mb-2">No Wallets Yet</h3>
+                <p className="text-gray-400 mb-6">Open your first Crypto Wallet to start transacting.</p>
                 <button
-                  onClick={() => createAccount('checking')}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-500 transition-colors inline-flex items-center space-x-2"
+                  onClick={() => createAccount('bitcoin')}
+                  className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-500 transition-colors inline-flex items-center space-x-2"
                 >
                   <Plus size={20} />
-                  <span>Open Checking Account</span>
+                  <span>Open Bitcoin Wallet</span>
                 </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 {accounts.map((account) => (
                   <div key={account.id} className="bg-gray-800 p-4 lg:p-6 rounded-xl border border-gray-700">
-                    <div className={`bg-gradient-to-r ${account.accountType === 'checking' ? 'from-blue-500 to-blue-600' :
-                      account.accountType === 'savings' ? 'from-green-500 to-green-600' :
-                        'from-purple-500 to-purple-600'
+                    <div className={`bg-gradient-to-r ${account.accountType === 'bitcoin' ? 'from-orange-500 to-orange-600' :
+                      account.accountType === 'ethereum' ? 'from-blue-500 to-blue-600' :
+                        'from-green-500 to-green-600'
                       } w-full h-36 lg:h-40 rounded-lg mb-4 p-4 text-white`}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-xs lg:text-sm opacity-80 capitalize">{account.accountType} Account</p>
-                          <p className="text-sm lg:text-lg font-mono mt-1">{account.accountNumber}</p>
-                          <p className="text-xs opacity-60 mt-0.5">Routing: 021000021</p>
+                          <p className="text-xs lg:text-sm opacity-80 capitalize">{account.accountType} Wallet</p>
+                          <p className="text-[10px] lg:text-xs font-mono mt-1 break-all">{account.accountNumber}</p>
+                          <p className="text-xs opacity-60 mt-0.5">Network: {account.accountType === 'bitcoin' ? 'BTC' : account.accountType === 'ethereum' ? 'ERC20' : 'TRC20'}</p>
                         </div>
                         <Wallet className="h-5 w-5 lg:h-6 lg:w-6" />
                       </div>
@@ -908,7 +951,9 @@ const Dashboard = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Amount</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Amount {selectedAccount && accounts.find(a => a.id === selectedAccount) ? `(${accounts.find(a => a.id === selectedAccount)?.accountType.toUpperCase()})` : ''}
+                </label>
                 <input
                   type="number"
                   value={amount}
@@ -916,8 +961,13 @@ const Dashboard = () => {
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                   placeholder="0.00"
                   min="0"
-                  step="0.01"
+                  step="0.00000001"
                 />
+                {selectedAccount && amount && accounts.find(a => a.id === selectedAccount) && (
+                  <p className="text-xs text-green-400 mt-2">
+                    ≈ ${(parseFloat(amount) * (cryptoPrices[accounts.find(a => a.id === selectedAccount)!.accountType] || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
@@ -939,9 +989,10 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={handleDeposit}
-                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-500 transition-colors text-sm lg:text-base"
+                disabled={isProcessingCrypto}
+                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-500 transition-colors text-sm lg:text-base disabled:opacity-50"
               >
-                Deposit
+                {isProcessingCrypto ? 'Processing...' : 'Deposit'}
               </button>
             </div>
           </div>
@@ -970,7 +1021,9 @@ const Dashboard = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Amount</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Amount {selectedAccount && accounts.find(a => a.id === selectedAccount) ? `(${accounts.find(a => a.id === selectedAccount)?.accountType.toUpperCase()})` : ''}
+                </label>
                 <input
                   type="number"
                   value={amount}
@@ -978,8 +1031,13 @@ const Dashboard = () => {
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                   placeholder="0.00"
                   min="0"
-                  step="0.01"
+                  step="0.00000001"
                 />
+                {selectedAccount && amount && accounts.find(a => a.id === selectedAccount) && (
+                  <p className="text-xs text-green-400 mt-2">
+                    ≈ ${(parseFloat(amount) * (cryptoPrices[accounts.find(a => a.id === selectedAccount)!.accountType] || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
@@ -1001,9 +1059,10 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={handleWithdraw}
-                className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-500 transition-colors"
+                disabled={isProcessingCrypto}
+                className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-500 transition-colors disabled:opacity-50"
               >
-                Withdraw
+                {isProcessingCrypto ? 'Processing...' : 'Withdraw'}
               </button>
             </div>
           </div>

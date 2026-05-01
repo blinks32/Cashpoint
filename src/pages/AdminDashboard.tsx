@@ -40,7 +40,7 @@ interface User {
 interface Account {
   id: string;
   userId: string;
-  accountType: 'checking' | 'savings' | 'investment';
+  accountType: 'bitcoin' | 'ethereum' | 'usdt';
   accountNumber: string;
   balance: number;
   status: 'active' | 'inactive' | 'frozen';
@@ -89,7 +89,7 @@ const AdminDashboard = () => {
   } | null>(null);  const [createAccountModalOpen, setCreateAccountModalOpen] = useState(false);
   const [newAccountData, setNewAccountData] = useState({
     userId: '',
-    accountType: 'checking',
+    accountType: 'bitcoin',
     accountNumber: '',
     initialBalance: 0
   });
@@ -109,7 +109,7 @@ const AdminDashboard = () => {
         Number(newAccountData.initialBalance)
       );
       setCreateAccountModalOpen(false);
-      setNewAccountData({ userId: '', accountType: 'checking', accountNumber: '', initialBalance: 0 });
+      setNewAccountData({ userId: '', accountType: 'bitcoin', accountNumber: '', initialBalance: 0 });
     } catch (error) {
       // Error handled by hook
     } finally {
@@ -920,9 +920,9 @@ const AdminDashboard = () => {
                   onChange={(e) => setNewAccountData({ ...newAccountData, accountType: e.target.value })}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                 >
-                  <option value="checking">Checking</option>
-                  <option value="savings">Savings</option>
-                  <option value="investment">Investment</option>
+                  <option value="bitcoin">Bitcoin Wallet</option>
+                  <option value="ethereum">Ethereum Wallet</option>
+                  <option value="usdt">USDT Wallet</option>
                 </select>
               </div>
               <div>
