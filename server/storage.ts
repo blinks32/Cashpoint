@@ -1,4 +1,6 @@
 import { users, accounts, transactions, type User, type InsertUser, type Account, type InsertAccount, type Transaction, type InsertTransaction } from "@shared/schema";
+import { db } from "./db";
+import { eq, inArray } from "drizzle-orm";
 
 // Storage interface for banking application
 export interface IStorage {
@@ -157,4 +159,68 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+class DbStorage implements IStorage {
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email));
+    return result[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(insertUser).returning();
+    return result[0];
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const result = await db.update(users).set(userData).where(eq(users.id, id)).returning();
+    return result[0];
+  }
+
+  // Account operations
+  async getAccountsByUserId(userId: number): Promise<Account[]> {
+    return await db.select().from(accounts).where(eq(accounts.userId, userId));
+  }
+
+  async getAccount(id: number): Promise<Account | undefined> {
+    const result = await db.select().from(accounts).where(eq(accounts.id, id));
+    return result[0];
+  }
+
+  async createAccount(insertAccount: InsertAccount): Promise<Account> {
+    const result = await db.insert(accounts).values(insertAccount).returning();
+    return result[0];
+  }
+
+  async updateAccount(id: number, accountData: Partial<Account>): Promise<Account | undefined> {
+    const result = await db.update(accounts).set(accountData).where(eq(accounts.id, id)).returning();
+    return result[0];
+  }
+
+  // Transaction operations
+  async getTransactionsByAccountIds(accountIds: number[]): Promise<Transaction[]> {
+    if (accountIds.length === 0) return [];
+    return await db.select().from(transactions).where(inArray(transactions.accountId, accountIds));
+  }
+
+  async getTransaction(id: number): Promise<Transaction | undefined> {
+    const result = await db.select().from(transactions).where(eq(transactions.id, id));
+    return result[0];
+  }
+
+  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
+    const result = await db.insert(transactions).values(insertTransaction).returning();
+    return result[0];
+  }
+
+  async updateTransaction(id: number, transactionData: Partial<Transaction>): Promise<Transaction | undefined> {
+    const result = await db.update(transactions).set(transactionData).where(eq(transactions.id, id)).returning();
+    return result[0];
+  }
+}
+
+export const storage: IStorage = process.env.DATABASE_URL ? new DbStorage() : new MemStorage();

@@ -17,7 +17,9 @@ import {
   Wallet,
   Send,
   Download,
-  History
+  History,
+  Menu,
+  X
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,6 +33,7 @@ const Dashboard = () => {
   const { transactions, loading: transactionsLoading, createTransaction, transferFunds } = useTransactions();
   
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -133,7 +136,7 @@ const Dashboard = () => {
         return (
           <div className="space-y-6">
             {/* Account Overview Cards */}
-            <div className="grid md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 p-6 rounded-xl text-gray-900">
                 <div className="flex items-center justify-between">
                   <div>
@@ -159,7 +162,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Checking</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${checkingAccount?.balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
+                      ${checkingAccount ? parseFloat(checkingAccount.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
                     </h3>
                     <p className="text-sm text-blue-400">Available now</p>
                   </div>
@@ -172,7 +175,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Savings</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${savingsAccount?.balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
+                      ${savingsAccount ? parseFloat(savingsAccount.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
                     </h3>
                     <p className="text-sm text-green-400">4.5% APY</p>
                   </div>
@@ -185,7 +188,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Investments</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${investmentAccount?.balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
+                      ${investmentAccount ? parseFloat(investmentAccount.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
                     </h3>
                     <p className="text-sm text-purple-400">Optional</p>
                   </div>
@@ -197,7 +200,7 @@ const Dashboard = () => {
             {/* Quick Actions */}
             <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
               <h3 className="text-xl font-bold text-white mb-4">Quick Actions</h3>
-              <div className="grid md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <button 
                   onClick={() => setShowDepositModal(true)}
                   className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
@@ -305,7 +308,7 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p className="text-white font-medium">{transaction.description}</p>
-                          <p className="text-gray-400 text-sm">{new Date(transaction.created_at).toLocaleDateString()}</p>
+                          <p className="text-gray-400 text-sm">{new Date((transaction as any).createdAt || (transaction as any).created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -356,7 +359,7 @@ const Dashboard = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto"></div>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {accounts.map((account) => (
                   <div key={account.id} className="bg-gray-800 p-6 rounded-xl border border-gray-700">
                     <div className={`bg-gradient-to-r ${
@@ -483,69 +486,154 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-gray-800 border-r border-gray-700">
-        <div className="p-6">
-          <div className="flex items-center space-x-2 mb-8">
-            <div className="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center">
-              <DollarSign className="h-5 w-5 text-gray-900" />
-            </div>
-            <span className="text-white font-bold">CashPoint</span>
+    <div className="min-h-screen bg-gray-900">
+      {/* Mobile Header */}
+      <div className="md:hidden sticky top-0 z-40 bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
+        <button
+          aria-label="Open Menu"
+          onClick={() => setSidebarOpen(true)}
+          className="text-gray-300 hover:text-white"
+        >
+          <Menu size={22} />
+        </button>
+        <div className="flex items-center space-x-2">
+          <div className="w-7 h-7 bg-yellow-400 rounded-lg flex items-center justify-center">
+            <DollarSign className="h-4 w-4 text-gray-900" />
           </div>
-
-          <nav className="space-y-2">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeTab === 'dashboard' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              <LayoutDashboard size={20} />
-              <span>Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('accounts')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeTab === 'accounts' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              <CreditCard size={20} />
-              <span>Accounts</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('transactions')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeTab === 'transactions' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              <History size={20} />
-              <span>Transactions</span>
-            </button>
-
-            <button
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-gray-300 hover:bg-gray-700 transition-colors"
-            >
-              <Settings size={20} />
-              <span>Settings</span>
-            </button>
-
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-red-400 hover:bg-gray-700 transition-colors"
-            >
-              <LogOut size={20} />
-              <span>Sign Out</span>
-            </button>
-          </nav>
+          <span className="text-white font-semibold">CashPoint</span>
         </div>
+        <div />
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-8">
-        {renderContent()}
+      <div className="flex">
+        {/* Sidebar - Desktop */}
+        <div className="hidden md:block w-64 bg-gray-800 border-r border-gray-700">
+          <div className="p-6">
+            <div className="flex items-center space-x-2 mb-8">
+              <div className="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-gray-900" />
+              </div>
+              <span className="text-white font-bold">CashPoint</span>
+            </div>
+
+            <nav className="space-y-2">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                  activeTab === 'dashboard' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <LayoutDashboard size={20} />
+                <span>Dashboard</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('accounts')}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                  activeTab === 'accounts' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <CreditCard size={20} />
+                <span>Accounts</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('transactions')}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                  activeTab === 'transactions' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <History size={20} />
+                <span>Transactions</span>
+              </button>
+
+              <button
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-gray-300 hover:bg-gray-700 transition-colors"
+              >
+                <Settings size={20} />
+                <span>Settings</span>
+              </button>
+
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-red-400 hover:bg-gray-700 transition-colors"
+              >
+                <LogOut size={20} />
+                <span>Sign Out</span>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Sidebar - Mobile Drawer */}
+        {sidebarOpen && (
+          <div className="md:hidden fixed inset-0 z-50 flex">
+            <div className="w-72 bg-gray-800 h-full border-r border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-2">
+                  <div className="w-7 h-7 bg-yellow-400 rounded-lg flex items-center justify-center">
+                    <DollarSign className="h-4 w-4 text-gray-900" />
+                  </div>
+                  <span className="text-white font-semibold">CashPoint</span>
+                </div>
+                <button aria-label="Close Menu" onClick={() => setSidebarOpen(false)} className="text-gray-300 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <nav className="space-y-2">
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                    activeTab === 'dashboard' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  <LayoutDashboard size={20} />
+                  <span>Dashboard</span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('accounts'); setSidebarOpen(false); }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                    activeTab === 'accounts' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  <CreditCard size={20} />
+                  <span>Accounts</span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('transactions'); setSidebarOpen(false); }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                    activeTab === 'transactions' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  <History size={20} />
+                  <span>Transactions</span>
+                </button>
+
+                <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-gray-300 hover:bg-gray-700 transition-colors">
+                  <Settings size={20} />
+                  <span>Settings</span>
+                </button>
+
+                <button
+                  onClick={() => { handleSignOut(); setSidebarOpen(false); }}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-red-400 hover:bg-gray-700 transition-colors"
+                >
+                  <LogOut size={20} />
+                  <span>Sign Out</span>
+                </button>
+              </nav>
+            </div>
+            <div className="flex-1 bg-black/50" onClick={() => setSidebarOpen(false)} />
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="flex-1 p-4 md:p-8">
+          {renderContent()}
+        </div>
       </div>
 
       {/* Deposit Modal */}
