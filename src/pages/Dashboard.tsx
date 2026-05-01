@@ -251,11 +251,27 @@ const Dashboard = () => {
     }
   };
 
+  const validateAddress = (type: string, address: string) => {
+    if (type === 'ethereum' || type === 'usdt') {
+      return /^0x[a-fA-F0-9]{40}$/.test(address);
+    } else if (type === 'bitcoin') {
+      // Basic check for Legacy (1...), SegWit (3...), or Bech32 (bc1...)
+      return /^(1|3|bc1q)[a-zA-Z0-9]{25,62}$/.test(address);
+    }
+    return true;
+  };
+
   const handleAddWallet = async () => {
     if (!walletAddress) {
       toast.error('Please enter a wallet address');
       return;
     }
+
+    if (!validateAddress(walletType, walletAddress)) {
+      toast.error(`Invalid ${walletType.toUpperCase()} address format`);
+      return;
+    }
+
     try {
       await createAccount(walletType, walletAddress);
       setShowAddWalletModal(false);
@@ -267,6 +283,13 @@ const Dashboard = () => {
 
   const handleEditWallet = async () => {
     if (!editingWalletId || !walletAddress) return;
+
+    const wallet = accounts.find(a => a.id === editingWalletId);
+    if (wallet && !validateAddress(wallet.accountType, walletAddress)) {
+      toast.error(`Invalid ${wallet.accountType.toUpperCase()} address format`);
+      return;
+    }
+
     try {
       await updateAccount(editingWalletId, { accountNumber: walletAddress });
       setShowEditWalletModal(false);
