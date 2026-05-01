@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Activity,
   Wallet,
+  Zap,
   Send,
   Download,
   History,
@@ -254,12 +255,12 @@ const Dashboard = () => {
   };
 
   const balanceData = [
-    { name: 'Jan', checking: checkingAccount?.balance || 0, savings: savingsAccount?.balance || 0 },
-    { name: 'Feb', checking: checkingAccount?.balance || 0, savings: savingsAccount?.balance || 0 },
-    { name: 'Mar', checking: checkingAccount?.balance || 0, savings: savingsAccount?.balance || 0 },
-    { name: 'Apr', checking: checkingAccount?.balance || 0, savings: savingsAccount?.balance || 0 },
-    { name: 'May', checking: checkingAccount?.balance || 0, savings: savingsAccount?.balance || 0 },
-    { name: 'Jun', checking: checkingAccount?.balance || 0, savings: savingsAccount?.balance || 0 },
+    { name: 'Jan', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
+    { name: 'Feb', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
+    { name: 'Mar', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
+    { name: 'Apr', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
+    { name: 'May', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
+    { name: 'Jun', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
   ];
 
   const spendingData = [
@@ -326,39 +327,39 @@ const Dashboard = () => {
               <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-400">Checking</p>
+                    <p className="text-sm text-gray-400">Bitcoin</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${(checkingAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${(bitcoinAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
-                    <p className="text-sm text-blue-400">Available now</p>
+                    <p className="text-sm text-orange-400">Main Wallet</p>
                   </div>
-                  <CreditCard className="h-8 w-8 text-blue-400" />
+                  <Wallet className="h-8 w-8 text-orange-400" />
                 </div>
               </div>
 
               <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-400">Savings</p>
+                    <p className="text-sm text-gray-400">Ethereum</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${(savingsAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${(ethereumAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
-                    <p className="text-sm text-green-400">4.5% APY</p>
+                    <p className="text-sm text-blue-400">Web3 Ready</p>
                   </div>
-                  <PiggyBank className="h-8 w-8 text-green-400" />
+                  <Zap className="h-8 w-8 text-blue-400" />
                 </div>
               </div>
 
               <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-400">Investments</p>
+                    <p className="text-sm text-gray-400">USDT</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${(investmentAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${(usdtAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
-                    <p className="text-sm text-purple-400">Optional</p>
+                    <p className="text-sm text-green-400">Stablecoin</p>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-purple-400" />
+                  <Shield className="h-8 w-8 text-green-400" />
                 </div>
               </div>
             </div>
