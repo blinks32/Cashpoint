@@ -20,16 +20,16 @@ const Footer: React.FC = () => {
               Your trusted digital banking partner. Secure, fast, and reliable financial services for everyone.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-yellow-400 transition-colors">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-yellow-400 transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-yellow-400 transition-colors">
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-yellow-400 transition-colors">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-yellow-400 transition-colors">
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-yellow-400 transition-colors">
                 <Linkedin className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-yellow-400 transition-colors">
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-yellow-400 transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
             </div>
@@ -39,11 +39,11 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="text-white font-semibold mb-4">Products</h3>
             <ul className="space-y-2">
-              <li><Link to="#" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Checking Account</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Savings Account</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Investment Options</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Business Banking</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Mobile Banking</Link></li>
+              <li><Link to="/dashboard" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Checking Account</Link></li>
+              <li><Link to="/dashboard" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Savings Account</Link></li>
+              <li><Link to="/dashboard" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Investment Options</Link></li>
+              <li><Link to="/dashboard" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Business Banking</Link></li>
+              <li><Link to="/dashboard" className="text-gray-400 hover:text-yellow-400 text-sm transition-colors">Mobile Banking</Link></li>
             </ul>
           </div>
 

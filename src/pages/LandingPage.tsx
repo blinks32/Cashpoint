@@ -151,12 +151,12 @@ const LandingPage = () => {
                 >
                   Open Free Account
                 </Link>
-                <Link 
-                  to="#accounts" 
+                <a 
+                  href="#accounts" 
                   className="border border-gray-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-800 transition-all duration-300"
                 >
                   Learn More
-                </Link>
+                </a>
               </div>
               
               {/* Quick Stats */}

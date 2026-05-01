@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   CreditCard,
@@ -58,6 +59,7 @@ interface Transaction {
 }
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
   const {
     users,
@@ -89,10 +91,9 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (user && user.role !== 'admin' && user.role !== 'super_admin') {
       toast.error('Access denied. Admin privileges required.');
-      // Redirect to dashboard or login
-      window.location.href = '/dashboard';
+      navigate('/dashboard');
     }
-  }, [user]);
+  }, [user, navigate]);
 
   // Fetch admin data on component mount
   useEffect(() => {

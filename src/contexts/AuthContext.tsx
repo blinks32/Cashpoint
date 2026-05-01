@@ -5,6 +5,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut as firebaseSignOut,
+  GoogleAuthProvider,
+  signInWithPopup,
   User as FirebaseUser 
 } from 'firebase/auth';
 import { 
@@ -33,6 +35,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, userData: any) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
   setUserDirectly: (user: User) => void;
@@ -100,8 +103,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Upgrade to admin if email matches admin@cashpoint.com
+      if (email.toLowerCase() === 'admin@cashpoint.com') {
+        const userRef = doc(db, 'users', userCredential.user.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists() && userDoc.data().role !== 'admin') {
+          await updateDoc(userRef, { role: 'admin' });
+        } else if (!userDoc.exists()) {
+          // Create admin document if it doesn't exist
+          await setDoc(userRef, {
+            email,
+            firstName: 'System',
+            lastName: 'Admin',
+            role: 'admin',
+            kycStatus: 'approved',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        }
+      }
+      
       toast.success('Signed in successfully!');
+    } catch (error: any) {
+      toast.error(error.message);
+      throw error;
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const firebaseUser = userCredential.user;
+
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const userDoc = await getDoc(userRef);
+
+      if (!userDoc.exists()) {
+        const newUser: Omit<User, 'id'> = {
+          email: firebaseUser.email || '',
+          firstName: firebaseUser.displayName?.split(' ')[0] || 'Google',
+          lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || 'User',
+          phone: firebaseUser.phoneNumber || '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          kycStatus: 'none',
+          role: 'user'
+        };
+
+        await setDoc(userRef, newUser);
+        setUser({ id: firebaseUser.uid, ...newUser } as User);
+      } else {
+        setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+      }
+      
+      toast.success('Signed in with Google successfully!');
     } catch (error: any) {
       toast.error(error.message);
       throw error;
@@ -150,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     updateProfile,
     setUserDirectly
