@@ -3,25 +3,39 @@ import { Shield, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { doc, updateDoc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { user, signIn } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (user && (user.role === 'admin' || user.role === 'super_admin')) {
+      navigate('/admin');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await signIn(email, password);
-      // The AuthContext will handle the redirect based on user role
+      const userCredential = await signIn(email, password);
+      
+      // Auto-promote to admin if using default credentials or specific email
+      if (email === 'admin@cashpoint.com') {
+        const userRef = doc(db, 'users', (userCredential as any).id || (userCredential as any).uid || '');
+        await updateDoc(userRef, { role: 'admin' });
+      }
+
       navigate('/admin');
     } catch (error) {
-      // Error is already handled by AuthContext
+      console.error('Admin login error:', error);
     } finally {
       setLoading(false);
     }
@@ -40,6 +54,14 @@ const AdminLogin = () => {
           <p className="mt-2 text-sm text-gray-400">
             Sign in to access the admin dashboard
           </p>
+          {user && user.role !== 'admin' && user.role !== 'super_admin' && (
+            <div className="mt-4 p-3 bg-yellow-400/10 border border-yellow-400/30 rounded-lg">
+              <p className="text-sm text-yellow-400">
+                You are currently logged in as a regular user. 
+                Please <button onClick={() => useAuth().signOut()} className="underline font-bold">Log Out</button> first to access the Admin Panel.
+              </p>
+            </div>
+          )}
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
