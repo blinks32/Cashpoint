@@ -11,8 +11,9 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { user, signIn } = useAuth();
+  const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [showBootstrap, setShowBootstrap] = useState(false);
 
   React.useEffect(() => {
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
@@ -25,17 +26,32 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const userCredential = await signIn(email, password);
-      
-      // Auto-promote to admin if using default credentials or specific email
-      if (email === 'admin@cashpoint.com') {
-        const userRef = doc(db, 'users', (userCredential as any).id || (userCredential as any).uid || '');
-        await updateDoc(userRef, { role: 'admin' });
-      }
-
+      await signIn(email, password);
       navigate('/admin');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Admin login error:', error);
+      if (error.code === 'auth/invalid-credential' && email === 'admin@cashpoint.com') {
+        setShowBootstrap(true);
+        toast.error('Admin account not found. You can initialize it below.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBootstrap = async () => {
+    setLoading(true);
+    try {
+      await signUp('admin@cashpoint.com', 'admin123', {
+        firstName: 'System',
+        lastName: 'Admin',
+        phone: '0000000000'
+      });
+      // signUp automatically logs in
+      navigate('/admin');
+      toast.success('Admin account initialized!');
+    } catch (error: any) {
+      toast.error('Failed to initialize admin: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -137,6 +153,28 @@ const AdminLogin = () => {
             </a>
           </div>
         </form>
+
+        {showBootstrap && (
+          <div className="mt-6 p-4 bg-purple-600/20 border border-purple-500/50 rounded-lg text-center">
+            <p className="text-sm text-purple-200 mb-4">
+              It looks like the default admin account hasn't been created yet in your database.
+            </p>
+            <button
+              onClick={handleBootstrap}
+              disabled={loading}
+              className="w-full py-2 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-500 transition-colors flex items-center justify-center space-x-2"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <>
+                  <Shield size={16} />
+                  <span>Initialize Admin Account</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="mt-8 p-4 bg-gray-800 rounded-lg border border-gray-700">
           <h3 className="text-sm font-medium text-white mb-2">Default Admin Credentials:</h3>
