@@ -377,6 +377,16 @@ const AdminDashboard = () => {
                           <Shield size={16} />
                         </button>
                       )}
+                      <button
+                        onClick={() => {
+                          setNewAccountData(prev => ({ ...prev, userId: user.id }));
+                          setCreateAccountModalOpen(true);
+                        }}
+                        className="text-green-400 hover:text-green-300" 
+                        title="Open Account for User"
+                      >
+                        <CreditCard size={16} />
+                      </button>
                       <button className="text-blue-400 hover:text-blue-300" title="View Details">
                         <Eye size={16} />
                       </button>
