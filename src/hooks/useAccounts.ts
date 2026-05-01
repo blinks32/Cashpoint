@@ -8,6 +8,7 @@ import {
   onSnapshot, 
   addDoc, 
   updateDoc, 
+  deleteDoc,
   doc, 
   serverTimestamp 
 } from 'firebase/firestore';
@@ -57,20 +58,10 @@ export const useAccounts = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const createAccount = async (accountType: 'bitcoin' | 'ethereum' | 'usdt') => {
+  const createAccount = async (accountType: 'bitcoin' | 'ethereum' | 'usdt', accountNumber: string) => {
     try {
       if (!user) throw new Error('No user logged in');
-
-      // Generate a realistic Crypto ID based on type
-      let accountNumber = '';
-      if (accountType === 'ethereum' || accountType === 'usdt') {
-        const hex = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-        accountNumber = '0x' + hex;
-      } else {
-        const chars = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
-        const addr = Array.from({length: 38}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        accountNumber = 'bc1q' + addr;
-      }
+      if (!accountNumber) throw new Error('Wallet address is required');
 
       const newAccount: Omit<Account, 'id'> = {
         userId: user.id,
@@ -83,10 +74,35 @@ export const useAccounts = () => {
       };
 
       const docRef = await addDoc(collection(db, 'accounts'), newAccount);
-      toast.success(`${accountType.charAt(0).toUpperCase() + accountType.slice(1)} account created!`);
+      toast.success(`${accountType.charAt(0).toUpperCase() + accountType.slice(1)} wallet added!`);
       return { id: docRef.id, ...newAccount };
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
+      toast.error(error.message || 'Failed to add wallet');
+      throw error;
+    }
+  };
+
+  const updateAccount = async (accountId: string, data: Partial<Account>) => {
+    try {
+      const accountRef = doc(db, 'accounts', accountId);
+      await updateDoc(accountRef, {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+      toast.success('Wallet updated');
+    } catch (error: any) {
+      toast.error('Failed to update wallet');
+      throw error;
+    }
+  };
+
+  const deleteAccount = async (accountId: string) => {
+    try {
+      const accountRef = doc(db, 'accounts', accountId);
+      await deleteDoc(accountRef);
+      toast.success('Wallet removed');
+    } catch (error: any) {
+      toast.error('Failed to remove wallet');
       throw error;
     }
   };
@@ -108,6 +124,8 @@ export const useAccounts = () => {
     accounts,
     loading,
     createAccount,
+    updateAccount,
+    deleteAccount,
     updateBalance
   };
 };

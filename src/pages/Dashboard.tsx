@@ -42,7 +42,7 @@ import { db } from '../lib/firebase';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut, updateProfile } = useAuth();
-  const { accounts, loading: accountsLoading, createAccount } = useAccounts();
+  const { accounts, loading: accountsLoading, createAccount, updateAccount, deleteAccount } = useAccounts();
   const { transactions, loading: transactionsLoading, createTransaction, transferFunds } = useTransactions();
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -65,6 +65,11 @@ const Dashboard = () => {
   const [lookingUpBeneficiary, setLookingUpBeneficiary] = useState(false);
   const [cryptoPrices, setCryptoPrices] = useState<Record<string, number>>({ bitcoin: 0, ethereum: 0, usdt: 1 });
   const [isProcessingCrypto, setIsProcessingCrypto] = useState(false);
+  const [showAddWalletModal, setShowAddWalletModal] = useState(false);
+  const [showEditWalletModal, setShowEditWalletModal] = useState(false);
+  const [walletType, setWalletType] = useState<'bitcoin' | 'ethereum' | 'usdt'>('bitcoin');
+  const [walletAddress, setWalletAddress] = useState('');
+  const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPrices = async () => {
@@ -246,6 +251,42 @@ const Dashboard = () => {
     }
   };
 
+  const handleAddWallet = async () => {
+    if (!walletAddress) {
+      toast.error('Please enter a wallet address');
+      return;
+    }
+    try {
+      await createAccount(walletType, walletAddress);
+      setShowAddWalletModal(false);
+      setWalletAddress('');
+    } catch (error) {
+      console.error('Add wallet error:', error);
+    }
+  };
+
+  const handleEditWallet = async () => {
+    if (!editingWalletId || !walletAddress) return;
+    try {
+      await updateAccount(editingWalletId, { accountNumber: walletAddress });
+      setShowEditWalletModal(false);
+      setWalletAddress('');
+      setEditingWalletId(null);
+    } catch (error) {
+      console.error('Edit wallet error:', error);
+    }
+  };
+
+  const handleDeleteWallet = async (id: string) => {
+    if (window.confirm('Are you sure you want to remove this wallet?')) {
+      try {
+        await deleteAccount(id);
+      } catch (error) {
+        console.error('Delete wallet error:', error);
+      }
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -254,13 +295,16 @@ const Dashboard = () => {
     }
   };
 
+  const bitcoinBalance = accounts.filter(a => a.accountType === 'bitcoin').reduce((sum, a) => sum + (a.balance || 0), 0);
+  const ethereumBalance = accounts.filter(a => a.accountType === 'ethereum').reduce((sum, a) => sum + (a.balance || 0), 0);
+
   const balanceData = [
-    { name: 'Jan', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
-    { name: 'Feb', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
-    { name: 'Mar', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
-    { name: 'Apr', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
-    { name: 'May', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
-    { name: 'Jun', bitcoin: bitcoinAccount?.balance || 0, ethereum: ethereumAccount?.balance || 0 },
+    { name: 'Jan', bitcoin: bitcoinBalance * 0.8, ethereum: ethereumBalance * 0.7 },
+    { name: 'Feb', bitcoin: bitcoinBalance * 0.85, ethereum: ethereumBalance * 0.75 },
+    { name: 'Mar', bitcoin: bitcoinBalance * 0.9, ethereum: ethereumBalance * 0.8 },
+    { name: 'Apr', bitcoin: bitcoinBalance * 0.95, ethereum: ethereumBalance * 0.85 },
+    { name: 'May', bitcoin: bitcoinBalance * 0.98, ethereum: ethereumBalance * 0.95 },
+    { name: 'Jun', bitcoin: bitcoinBalance, ethereum: ethereumBalance },
   ];
 
   const spendingData = [
@@ -409,8 +453,8 @@ const Dashboard = () => {
                         color: '#F9FAFB'
                       }}
                     />
-                    <Line type="monotone" dataKey="checking" stroke="#3B82F6" strokeWidth={2} name="Checking" />
-                    <Line type="monotone" dataKey="savings" stroke="#10B981" strokeWidth={2} name="Savings" />
+                    <Line type="monotone" dataKey="bitcoin" stroke="#F59E0B" strokeWidth={2} name="Bitcoin" />
+                    <Line type="monotone" dataKey="ethereum" stroke="#3B82F6" strokeWidth={2} name="Ethereum" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -500,21 +544,36 @@ const Dashboard = () => {
                 <p className="text-gray-400 text-sm">Manage your bank accounts and view balances</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
-                {!accounts.find(a => a.accountType === 'bitcoin') && (
-                  <button onClick={() => createAccount('bitcoin')} className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-500 transition-colors flex items-center space-x-1">
-                    <Plus size={16} /><span>Bitcoin Wallet</span>
-                  </button>
-                )}
-                {!accounts.find(a => a.accountType === 'ethereum') && (
-                  <button onClick={() => createAccount('ethereum')} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-500 transition-colors flex items-center space-x-1">
-                    <Plus size={16} /><span>Ethereum Wallet</span>
-                  </button>
-                )}
-                {!accounts.find(a => a.accountType === 'usdt') && (
-                  <button onClick={() => createAccount('usdt')} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-500 transition-colors flex items-center space-x-1">
-                    <Plus size={16} /><span>USDT Wallet</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    setWalletType('bitcoin');
+                    setWalletAddress('');
+                    setShowAddWalletModal(true);
+                  }}
+                  className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-500 transition-colors flex items-center space-x-1"
+                >
+                  <Plus size={16} /><span>Add Bitcoin</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setWalletType('ethereum');
+                    setWalletAddress('');
+                    setShowAddWalletModal(true);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-500 transition-colors flex items-center space-x-1"
+                >
+                  <Plus size={16} /><span>Add Ethereum</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setWalletType('usdt');
+                    setWalletAddress('');
+                    setShowAddWalletModal(true);
+                  }}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-500 transition-colors flex items-center space-x-1"
+                >
+                  <Plus size={16} /><span>Add USDT</span>
+                </button>
               </div>
             </div>
 
@@ -526,13 +585,17 @@ const Dashboard = () => {
               <div className="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center">
                 <CreditCard size={48} className="text-gray-600 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-white mb-2">No Wallets Yet</h3>
-                <p className="text-gray-400 mb-6">Open your first Crypto Wallet to start transacting.</p>
+                <p className="text-gray-400 mb-6">Add your first Crypto Wallet to start transacting.</p>
                 <button
-                  onClick={() => createAccount('bitcoin')}
+                  onClick={() => {
+                    setWalletType('bitcoin');
+                    setWalletAddress('');
+                    setShowAddWalletModal(true);
+                  }}
                   className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-500 transition-colors inline-flex items-center space-x-2"
                 >
                   <Plus size={20} />
-                  <span>Open Bitcoin Wallet</span>
+                  <span>Add Bitcoin Wallet</span>
                 </button>
               </div>
             ) : (
@@ -555,6 +618,24 @@ const Dashboard = () => {
                         <p className="text-lg lg:text-2xl font-bold">${(account.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                         <p className="text-xs opacity-70 capitalize mt-1">Status: {account.status || 'active'}</p>
                       </div>
+                    </div>
+                    <div className="flex space-x-2 mb-2">
+                      <button
+                        onClick={() => {
+                          setEditingWalletId(account.id);
+                          setWalletAddress(account.accountNumber);
+                          setShowEditWalletModal(true);
+                        }}
+                        className="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors text-xs flex items-center justify-center space-x-1"
+                      >
+                        <Edit3 size={14} /><span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteWallet(account.id)}
+                        className="flex-1 bg-red-500/10 text-red-500 py-2 rounded-lg hover:bg-red-500/20 transition-colors text-xs flex items-center justify-center space-x-1 border border-red-500/20"
+                      >
+                        <X size={14} /><span>Remove</span>
+                      </button>
                     </div>
                     <div className="flex space-x-2">
                       <button
@@ -1157,6 +1238,75 @@ const Dashboard = () => {
                 className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Add Wallet Modal */}
+      {showAddWalletModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-4 lg:p-6 rounded-xl max-w-md w-full">
+            <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Add {walletType.toUpperCase()} Wallet</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Wallet Address</label>
+                <input
+                  type="text"
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                  placeholder={`Enter your ${walletType} address`}
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowAddWalletModal(false)}
+                className="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-500 transition-colors text-sm lg:text-base"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddWallet}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors text-sm lg:text-base"
+              >
+                Add Wallet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Wallet Modal */}
+      {showEditWalletModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-4 lg:p-6 rounded-xl max-w-md w-full">
+            <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Edit Wallet Address</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Wallet Address</label>
+                <input
+                  type="text"
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                  placeholder="Enter new address"
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowEditWalletModal(false)}
+                className="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-500 transition-colors text-sm lg:text-base"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditWallet}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors text-sm lg:text-base"
+              >
+                Update Wallet
               </button>
             </div>
           </div>
