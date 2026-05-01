@@ -74,6 +74,7 @@ const AdminDashboard = () => {
     updateKYCStatus,
     updateUserRole,
     updateAccountStatus,
+    createAccount,
   } = useAdmin();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,10 +86,36 @@ const AdminDashboard = () => {
     accountType: string;
     balance: number;
     userId: string;
-  } | null>(null);
+  } | null>(null);  const [createAccountModalOpen, setCreateAccountModalOpen] = useState(false);
+  const [newAccountData, setNewAccountData] = useState({
+    userId: '',
+    accountType: 'checking',
+    accountNumber: '',
+    initialBalance: 0
+  });
+  const [createAccountLoading, setCreateAccountLoading] = useState(false);
 
-
-
+  const handleCreateAccount = async () => {
+    if (!newAccountData.userId || !newAccountData.accountNumber) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    setCreateAccountLoading(true);
+    try {
+      await createAccount(
+        newAccountData.userId,
+        newAccountData.accountType,
+        newAccountData.accountNumber,
+        Number(newAccountData.initialBalance)
+      );
+      setCreateAccountModalOpen(false);
+      setNewAccountData({ userId: '', accountType: 'checking', accountNumber: '', initialBalance: 0 });
+    } catch (error) {
+      // Error handled by hook
+    } finally {
+      setCreateAccountLoading(false);
+    }
+  };
   // Fetch admin data on component mount
   useEffect(() => {
     const fetchData = async () => {
@@ -382,6 +409,12 @@ const AdminDashboard = () => {
               className="pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
             />
           </div>
+          <button
+            onClick={() => setCreateAccountModalOpen(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-500 transition-colors flex items-center space-x-2"
+          >
+            <span>Open Account</span>
+          </button>
           <button className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-300 transition-colors">
             Export Accounts
           </button>
@@ -848,6 +881,82 @@ const AdminDashboard = () => {
           {renderContent()}
         </div>
       </div>
+
+      {/* Create Account Modal */}
+      {createAccountModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-6 rounded-xl max-w-md w-full">
+            <h3 className="text-xl font-bold text-white mb-4">Open New Account</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Select User *</label>
+                <select
+                  value={newAccountData.userId}
+                  onChange={(e) => setNewAccountData({ ...newAccountData, userId: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                >
+                  <option value="">-- Select User --</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.firstName} {u.lastName} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Account Type</label>
+                <select
+                  value={newAccountData.accountType}
+                  onChange={(e) => setNewAccountData({ ...newAccountData, accountType: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                >
+                  <option value="checking">Checking</option>
+                  <option value="savings">Savings</option>
+                  <option value="investment">Investment</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Account Number *</label>
+                <input
+                  type="text"
+                  value={newAccountData.accountNumber}
+                  onChange={(e) => setNewAccountData({ ...newAccountData, accountNumber: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono"
+                  placeholder="e.g. 1029384756"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Initial Balance ($)</label>
+                <input
+                  type="number"
+                  value={newAccountData.initialBalance}
+                  onChange={(e) => setNewAccountData({ ...newAccountData, initialBalance: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setCreateAccountModalOpen(false)}
+                className="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-500 transition-colors"
+                disabled={createAccountLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateAccount}
+                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50"
+                disabled={createAccountLoading}
+              >
+                {createAccountLoading ? 'Creating...' : 'Create Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

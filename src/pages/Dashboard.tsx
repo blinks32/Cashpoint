@@ -41,7 +41,7 @@ import { db } from '../lib/firebase';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut, updateProfile } = useAuth();
-  const { accounts, loading: accountsLoading, createAccount } = useAccounts();
+  const { accounts, loading: accountsLoading } = useAccounts();
   const { transactions, loading: transactionsLoading, createTransaction, transferFunds } = useTransactions();
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -451,28 +451,21 @@ const Dashboard = () => {
         return (
           <div className="space-y-4 lg:space-y-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <h2 className="text-xl lg:text-2xl font-bold text-white">My Accounts</h2>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  onClick={() => createAccount('savings')}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-500 transition-colors flex items-center justify-center space-x-2 text-sm lg:text-base"
-                >
-                  <Plus size={16} />
-                  <span>Savings Account</span>
-                </button>
-                <button
-                  onClick={() => createAccount('investment')}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-500 transition-colors flex items-center justify-center space-x-2 text-sm lg:text-base"
-                >
-                  <Plus size={16} />
-                  <span>Investment Account</span>
-                </button>
+              <div>
+                <h2 className="text-xl lg:text-2xl font-bold text-white">My Accounts</h2>
+                <p className="text-gray-400 text-sm">Manage your bank accounts and view balances</p>
               </div>
             </div>
 
             {accountsLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto"></div>
+              </div>
+            ) : accounts.length === 0 ? (
+              <div className="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center">
+                <CreditCard size={48} className="text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Accounts Yet</h3>
+                <p className="text-gray-400 mb-4">Please contact support or visit a branch to open an account.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
@@ -481,18 +474,18 @@ const Dashboard = () => {
                     <div className={`bg-gradient-to-r ${account.accountType === 'checking' ? 'from-blue-500 to-blue-600' :
                       account.accountType === 'savings' ? 'from-green-500 to-green-600' :
                         'from-purple-500 to-purple-600'
-                      } w-full h-28 lg:h-32 rounded-lg mb-4 p-3 lg:p-4 text-white`}>
+                      } w-full h-36 lg:h-40 rounded-lg mb-4 p-4 text-white`}>
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs lg:text-sm opacity-80 capitalize">{account.accountType} Account</p>
-                          <p className="text-sm lg:text-lg font-mono">****{account.accountNumber?.slice(-4) || '0000'}</p>
+                          <p className="text-sm lg:text-lg font-mono mt-1">{account.accountNumber}</p>
+                          <p className="text-xs opacity-60 mt-0.5">Routing: 021000021</p>
                         </div>
                         <Wallet className="h-5 w-5 lg:h-6 lg:w-6" />
                       </div>
                       <div className="mt-3 lg:mt-4">
                         <p className="text-lg lg:text-2xl font-bold">${(account.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                        {account.accountType === 'savings' && <p className="text-xs lg:text-sm opacity-80">4.5% APY</p>}
-                        {account.accountType === 'investment' && <p className="text-xs lg:text-sm opacity-80">Optional</p>}
+                        <p className="text-xs opacity-70 capitalize mt-1">Status: {account.status || 'active'}</p>
                       </div>
                     </div>
                     <div className="flex space-x-2">

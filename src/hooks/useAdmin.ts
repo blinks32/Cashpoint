@@ -9,7 +9,9 @@ import {
   query, 
   orderBy, 
   limit,
-  serverTimestamp
+  serverTimestamp,
+  addDoc,
+  where
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -224,6 +226,41 @@ export const useAdmin = () => {
     }
   };
 
+  const createAccount = async (userId: string, accountType: string, accountNumber: string, initialBalance: number) => {
+    try {
+      // Check if account number already exists
+      const accountQuery = query(collection(db, 'accounts'), where('accountNumber', '==', accountNumber));
+      const accountDocs = await getDocs(accountQuery);
+      if (!accountDocs.empty) {
+        throw new Error('Account number already exists in the system');
+      }
+
+      const accountData = {
+        userId,
+        accountType,
+        accountNumber,
+        balance: initialBalance,
+        status: 'active',
+        createdAt: serverTimestamp(),
+      };
+
+      const docRef = await addDoc(collection(db, 'accounts'), accountData);
+      
+      const newAccount = {
+        id: docRef.id,
+        ...accountData,
+        createdAt: new Date()
+      } as Account;
+
+      setAccounts([...accounts, newAccount]);
+      toast.success('Account created successfully');
+      return docRef.id;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create account');
+      throw error;
+    }
+  };
+
   return {
     users,
     accounts,
@@ -239,5 +276,6 @@ export const useAdmin = () => {
     updateAccountStatus,
     updateUser,
     updateAccountBalance,
+    createAccount,
   };
 };
