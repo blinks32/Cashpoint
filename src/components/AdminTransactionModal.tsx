@@ -1,8 +1,15 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, DollarSign, CreditCard, Building2, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { 
+  doc, 
+  runTransaction, 
+  collection, 
+  serverTimestamp 
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // Initialize Stripe - Vite exposes env vars on import.meta.env
 // @ts-ignore - Vite env typing
@@ -31,11 +38,11 @@ interface AdminTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   account: {
-    id: number;
+    id: string;
     accountNumber: string;
     accountType: string;
-    balance: string;
-    userId: number;
+    balance: number;
+    userId: string;
   };
   user: {
     firstName: string;
@@ -163,7 +170,7 @@ export const AdminTransactionModal = ({
       return;
     }
 
-    if (transactionType === 'withdrawal' && amountNum > parseFloat(account.balance)) {
+    if (transactionType === 'withdrawal' && amountNum > account.balance) {
       toast.error('Insufficient funds');
       return;
     }
@@ -189,25 +196,47 @@ export const AdminTransactionModal = ({
         };
       }
 
-      const response = await fetch('/api/admin/transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await runTransaction(db, async (transaction) => {
+        const accountRef = doc(db, 'accounts', account.id);
+        const accountDoc = await transaction.get(accountRef);
+
+        if (!accountDoc.exists()) {
+          throw new Error('Account does not exist');
+        }
+
+        const currentBalance = accountDoc.data().balance;
+        let newBalance = currentBalance;
+
+        if (transactionType === 'deposit') {
+          newBalance += amountNum;
+        } else {
+          if (currentBalance < amountNum) {
+            throw new Error('Insufficient funds');
+          }
+          newBalance -= amountNum;
+        }
+
+        const referenceNumber = 'ADM' + Math.random().toString(36).substring(2, 15).toUpperCase();
+
+        const txRef = doc(collection(db, 'transactions'));
+        transaction.set(txRef, {
           accountId: account.id,
           type: transactionType,
           amount: amountNum,
           description: description || `Admin ${transactionType} via ${paymentMethod}`,
+          status: 'completed',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          referenceNumber,
           paymentMethod,
-          paymentDetails: JSON.stringify(paymentDetails),
-        }),
-      });
+          paymentDetails: JSON.stringify(paymentDetails)
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Transaction failed');
-      }
+        transaction.update(accountRef, {
+          balance: newBalance,
+          updatedAt: serverTimestamp()
+        });
+      });
 
       toast.success(`${transactionType === 'deposit' ? 'Deposit' : 'Withdrawal'} successful`);
       onSuccess();
@@ -229,25 +258,36 @@ export const AdminTransactionModal = ({
         stripePaymentMethodId: paymentMethodId,
       };
 
-      const response = await fetch('/api/admin/transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await runTransaction(db, async (transaction) => {
+        const accountRef = doc(db, 'accounts', account.id);
+        const accountDoc = await transaction.get(accountRef);
+
+        if (!accountDoc.exists()) {
+          throw new Error('Account does not exist');
+        }
+
+        const currentBalance = accountDoc.data().balance;
+        const referenceNumber = 'CRD' + Math.random().toString(36).substring(2, 15).toUpperCase();
+
+        const txRef = doc(collection(db, 'transactions'));
+        transaction.set(txRef, {
           accountId: account.id,
           type: 'deposit',
           amount: amountNum,
           description: description || 'Admin deposit via card',
+          status: 'completed',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          referenceNumber,
           paymentMethod: 'card',
-          paymentDetails: JSON.stringify(paymentDetails),
-        }),
-      });
+          paymentDetails: JSON.stringify(paymentDetails)
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Transaction failed');
-      }
+        transaction.update(accountRef, {
+          balance: currentBalance + amountNum,
+          updatedAt: serverTimestamp()
+        });
+      });
 
       toast.success('Card deposit successful');
       onSuccess();

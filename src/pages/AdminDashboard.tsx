@@ -26,34 +26,34 @@ import toast from 'react-hot-toast';
 import { AdminTransactionModal } from '../components/AdminTransactionModal';
 
 interface User {
-  id: number;
+  id: string;
   email: string;
   firstName: string;
   lastName: string;
   phone?: string;
   kycStatus: 'pending' | 'approved' | 'rejected';
   role: 'user' | 'admin' | 'super_admin';
-  createdAt: string;
+  createdAt: any;
 }
 
 interface Account {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   accountType: 'checking' | 'savings' | 'investment';
   accountNumber: string;
-  balance: string;
+  balance: number;
   status: 'active' | 'inactive' | 'frozen';
-  createdAt: string;
+  createdAt: any;
 }
 
 interface Transaction {
-  id: number;
-  accountId: number;
+  id: string;
+  accountId: string;
   type: 'deposit' | 'withdrawal' | 'transfer' | 'payment';
-  amount: string;
+  amount: number;
   description: string;
   status: 'pending' | 'completed' | 'failed';
-  createdAt: string;
+  createdAt: any;
   referenceNumber: string;
 }
 
@@ -75,14 +75,14 @@ const AdminDashboard = () => {
   } = useAdmin();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedAccount, setExpandedAccount] = useState<number | null>(null);
+  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
   const [transactionModalOpen, setTransactionModalOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<{
-    id: number;
+    id: string;
     accountNumber: string;
     accountType: string;
-    balance: string;
-    userId: number;
+    balance: number;
+    userId: string;
   } | null>(null);
 
   // Check if user is admin
@@ -125,7 +125,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const freezeAccount = async (accountId: number) => {
+  const freezeAccount = async (accountId: string) => {
     try {
       await updateAccountStatus(accountId, 'frozen');
     } catch (error) {
@@ -133,7 +133,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const getUserForAccount = (userId: number) => {
+  const getUserForAccount = (userId: string) => {
     return users.find(user => user.id === userId);
   };
 
@@ -142,7 +142,7 @@ const AdminDashboard = () => {
       id: account.id,
       accountNumber: account.accountNumber,
       accountType: account.accountType,
-      balance: account.balance || '0',
+      balance: account.balance || 0,
       userId: account.userId,
     });
     setTransactionModalOpen(true);
@@ -156,7 +156,7 @@ const AdminDashboard = () => {
     ]);
   };
 
-  const getAccountTransactions = (accountId: number) => {
+  const getAccountTransactions = (accountId: string) => {
     return transactions.filter(txn => txn.accountId === accountId);
   };
 
@@ -191,7 +191,7 @@ const AdminDashboard = () => {
             <div>
               <p className="text-sm text-gray-400">Total Balance</p>
               <h3 className="text-2xl font-bold text-white">
-                ${(stats?.totalBalance || accounts.reduce((sum, acc) => sum + parseFloat(acc.balance), 0)).toLocaleString()}
+                ${(stats?.totalBalance || accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)).toLocaleString()}
               </h3>
               <p className="text-sm text-green-400">+15% from last month</p>
             </div>
@@ -324,7 +324,7 @@ const AdminDashboard = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-300">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : new Date(user.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex space-x-2">
@@ -445,10 +445,10 @@ const AdminDashboard = () => {
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <p className="text-2xl font-bold text-white">
-                          ${parseFloat(account.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          ${(account.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </p>
                         <p className="text-gray-400 text-sm">
-                          Created {new Date(account.createdAt).toLocaleDateString()}
+                          Created {account.createdAt?.toDate ? account.createdAt.toDate().toLocaleDateString() : new Date(account.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       
@@ -514,7 +514,7 @@ const AdminDashboard = () => {
                             <div className="flex justify-between">
                               <span className="text-gray-400">Current Balance:</span>
                               <span className="text-white font-semibold">
-                                ${parseFloat(account.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                ${(account.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                               </span>
                             </div>
                             <div className="flex justify-between">
@@ -530,7 +530,13 @@ const AdminDashboard = () => {
                             <div className="flex justify-between">
                               <span className="text-gray-400">Created:</span>
                               <span className="text-white">
-                                {new Date(account.createdAt).toLocaleDateString('en-US', {
+                                {account.createdAt?.toDate ? account.createdAt.toDate().toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : new Date(account.createdAt).toLocaleDateString('en-US', {
                                   year: 'numeric',
                                   month: 'long',
                                   day: 'numeric',
@@ -582,7 +588,7 @@ const AdminDashboard = () => {
                               <div className="flex justify-between">
                                 <span className="text-gray-400">Member Since:</span>
                                 <span className="text-white">
-                                  {new Date(user.createdAt).toLocaleDateString()}
+                                  {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString() : new Date(user.createdAt).toLocaleDateString()}
                                 </span>
                               </div>
                             </div>
@@ -619,7 +625,7 @@ const AdminDashboard = () => {
                                     {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount}
                                   </p>
                                   <p className="text-xs text-gray-400">
-                                    {new Date(transaction.createdAt).toLocaleDateString()}
+                                    {transaction.createdAt?.toDate ? transaction.createdAt.toDate().toLocaleDateString() : new Date(transaction.createdAt).toLocaleDateString()}
                                   </p>
                                 </div>
                               </div>

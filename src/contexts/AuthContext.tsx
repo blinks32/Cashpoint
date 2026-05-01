@@ -1,16 +1,30 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { apiRequest } from '../config/api';
+import { 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  User as FirebaseUser 
+} from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  serverTimestamp 
+} from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 interface User {
-  id: number;
+  id: string;
   email: string;
   firstName: string;
   lastName: string;
   phone?: string;
-  createdAt: string;
-  updatedAt: string;
-  kycStatus: 'pending' | 'approved' | 'rejected';
+  createdAt: any;
+  updatedAt: any;
+  kycStatus: 'pending' | 'approved' | 'rejected' | 'none';
   role: 'user' | 'admin' | 'super_admin';
 }
 
@@ -39,39 +53,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is stored in localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        localStorage.removeItem('user');
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Fetch additional user data from Firestore
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+        } else {
+          // This might happen if user was created but doc failed
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const signUp = async (email: string, password: string, userData: any) => {
     try {
-      const response = await apiRequest('/api/auth/signup', {
-        method: 'POST',
-        body: JSON.stringify({
-          email,
-          password,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          phone: userData.phone
-        })
-      });
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
 
-      const data = await response.json();
+      const newUser: Omit<User, 'id'> = {
+        email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone || '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        kycStatus: 'none',
+        role: 'user'
+      };
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Signup failed');
-      }
-
-      setUser(data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+      
+      setUser({ id: firebaseUser.uid, ...newUser } as User);
       toast.success('Account created successfully!');
     } catch (error: any) {
       toast.error(error.message);
@@ -81,23 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const response = await apiRequest('/api/auth/signin', {
-        method: 'POST',
-        body: JSON.stringify({
-          email,
-          password
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Sign in failed');
-      }
-
-      console.log('User signed in successfully:', data.user);
-      setUser(data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      await signInWithEmailAndPassword(auth, email, password);
       toast.success('Signed in successfully!');
     } catch (error: any) {
       toast.error(error.message);
@@ -107,8 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      await firebaseSignOut(auth);
       setUser(null);
-      localStorage.removeItem('user');
       toast.success('Signed out successfully!');
     } catch (error: any) {
       toast.error(error.message);
@@ -118,24 +121,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: any) => {
     try {
-      if (!user) throw new Error('No user logged in');
+      if (!auth.currentUser) throw new Error('No user logged in');
 
-      const response = await fetch(`/api/user/${user.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        ...data,
+        updatedAt: serverTimestamp()
       });
 
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || 'Update failed');
+      const updatedDoc = await getDoc(userRef);
+      if (updatedDoc.exists()) {
+        setUser({ id: auth.currentUser.uid, ...updatedDoc.data() } as User);
       }
-
-      setUser(responseData);
-      localStorage.setItem('user', JSON.stringify(responseData));
+      
       toast.success('Profile updated successfully!');
     } catch (error: any) {
       toast.error(error.message);
@@ -145,7 +143,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setUserDirectly = (userData: User) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const value = {
@@ -163,4 +160,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
+};

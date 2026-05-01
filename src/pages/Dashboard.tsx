@@ -44,7 +44,7 @@ const Dashboard = () => {
   const [transferToAccount, setTransferToAccount] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const totalBalance = accounts.reduce((sum, account) => sum + parseFloat(account.balance || '0'), 0);
+  const totalBalance = accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
   const checkingAccount = accounts.find(acc => acc.accountType === 'checking');
   const savingsAccount = accounts.find(acc => acc.accountType === 'savings');
   const investmentAccount = accounts.find(acc => acc.accountType === 'investment');
@@ -57,7 +57,7 @@ const Dashboard = () => {
 
     try {
       await createTransaction(
-        parseInt(selectedAccount),
+        selectedAccount,
         'deposit',
         parseFloat(amount),
         description
@@ -79,7 +79,7 @@ const Dashboard = () => {
 
     try {
       await createTransaction(
-        parseInt(selectedAccount),
+        selectedAccount,
         'withdrawal',
         parseFloat(amount),
         description
@@ -106,8 +106,8 @@ const Dashboard = () => {
 
     try {
       await transferFunds(
-        parseInt(selectedAccount),
-        parseInt(transferToAccount),
+        selectedAccount,
+        transferToAccount,
         parseFloat(amount),
         description
       );
@@ -178,7 +178,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Checking</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${parseFloat(checkingAccount?.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${(checkingAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
                     <p className="text-sm text-blue-400">Available now</p>
                   </div>
@@ -191,7 +191,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Savings</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${parseFloat(savingsAccount?.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${(savingsAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
                     <p className="text-sm text-green-400">4.5% APY</p>
                   </div>
@@ -204,7 +204,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-400">Investments</p>
                     <h3 className="text-2xl font-bold text-white">
-                      ${parseFloat(investmentAccount?.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${(investmentAccount?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </h3>
                     <p className="text-sm text-purple-400">Optional</p>
                   </div>
@@ -319,13 +319,13 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p className="text-white font-medium text-sm lg:text-base">{transaction.description}</p>
-                          <p className="text-gray-400 text-xs lg:text-sm">{new Date(transaction.createdAt).toLocaleDateString()}</p>
+                          <p className="text-gray-400 text-xs lg:text-sm">{transaction.createdAt?.toDate ? transaction.createdAt.toDate().toLocaleDateString() : new Date(transaction.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className={`font-semibold text-sm lg:text-base ${transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
                           }`}>
-                          {transaction.type === 'deposit' ? '+' : '-'}${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          {transaction.type === 'deposit' ? '+' : '-'}${(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </p>
                         <p className={`text-xs lg:text-sm ${transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
                           }`}>
@@ -383,7 +383,7 @@ const Dashboard = () => {
                         <Wallet className="h-5 w-5 lg:h-6 lg:w-6" />
                       </div>
                       <div className="mt-3 lg:mt-4">
-                        <p className="text-lg lg:text-2xl font-bold">${parseFloat(account.balance || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-lg lg:text-2xl font-bold">${(account.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                         {account.accountType === 'savings' && <p className="text-xs lg:text-sm opacity-80">4.5% APY</p>}
                         {account.accountType === 'investment' && <p className="text-xs lg:text-sm opacity-80">Optional</p>}
                       </div>
@@ -447,14 +447,14 @@ const Dashboard = () => {
                         <div>
                           <p className="text-white font-medium">{transaction.description}</p>
                           <p className="text-gray-400 text-sm">
-                            {new Date(transaction.createdAt).toLocaleDateString()} • {transaction.referenceNumber}
+                            {transaction.createdAt?.toDate ? transaction.createdAt.toDate().toLocaleDateString() : new Date(transaction.createdAt).toLocaleDateString()} • {transaction.referenceNumber}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className={`font-semibold ${transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
                           }`}>
-                          {transaction.type === 'deposit' ? '+' : '-'}${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          {transaction.type === 'deposit' ? '+' : '-'}${(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </p>
                         <p className={`text-sm ${transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
                           }`}>
@@ -667,7 +667,7 @@ const Dashboard = () => {
                   <option value="">Select an account</option>
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id.toString()}>
-                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${parseFloat(account.balance || '0').toFixed(2)})
+                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${(account.balance || 0).toFixed(2)})
                     </option>
                   ))}
                 </select>
@@ -729,7 +729,7 @@ const Dashboard = () => {
                   <option value="">Select source account</option>
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id.toString()}>
-                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${parseFloat(account.balance || '0').toFixed(2)})
+                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${(account.balance || 0).toFixed(2)})
                     </option>
                   ))}
                 </select>

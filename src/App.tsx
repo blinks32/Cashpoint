@@ -13,6 +13,9 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import Security from './pages/Security';
 
 function App() {
   return (
@@ -49,6 +52,9 @@ function App() {
                 <AdminDashboard />
               </AdminRoute>
             } />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/security" element={<Security />} />
           </Routes>
           {/* Tawk.to Live Chat */}
           <TawkToChat

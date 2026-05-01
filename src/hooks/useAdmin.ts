@@ -1,37 +1,47 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiRequest } from '../config/api';
 import toast from 'react-hot-toast';
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  updateDoc, 
+  query, 
+  orderBy, 
+  limit,
+  serverTimestamp
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface User {
-  id: number;
+  id: string;
   email: string;
   firstName: string;
   lastName: string;
   phone?: string;
   kycStatus: 'pending' | 'approved' | 'rejected';
   role: 'user' | 'admin' | 'super_admin';
-  createdAt: string;
+  createdAt: any;
 }
 
 interface Account {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   accountType: 'checking' | 'savings' | 'investment';
   accountNumber: string;
-  balance: string;
+  balance: number;
   status: 'active' | 'inactive' | 'frozen';
-  createdAt: string;
+  createdAt: any;
 }
 
 interface Transaction {
-  id: number;
-  accountId: number;
+  id: string;
+  accountId: string;
   type: 'deposit' | 'withdrawal' | 'transfer' | 'payment';
-  amount: string;
+  amount: number;
   description: string;
   status: 'pending' | 'completed' | 'failed';
-  createdAt: string;
+  createdAt: any;
   referenceNumber: string;
 }
 
@@ -45,42 +55,25 @@ interface AdminStats {
 }
 
 export const useAdmin = () => {
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const makeAdminRequest = async (endpoint: string, options: RequestInit = {}) => {
-    if (!user) throw new Error('User not authenticated');
-    
-    const url = new URL(endpoint, window.location.origin);
-    url.searchParams.append('userId', user.id.toString());
-    
-    const response = await apiRequest(url.toString(), {
-      ...options,
-      headers: {
-        ...options.headers,
-        'x-user-id': user.id.toString(),
-      },
-    });
-    
-    return response;
-  };
-
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await makeAdminRequest('/api/admin/users');
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-      const data = await response.json();
-      setUsers(data);
-      return data;
+      const snapshot = await getDocs(collection(db, 'users'));
+      const usersData: User[] = [];
+      snapshot.forEach(doc => {
+        usersData.push({ id: doc.id, ...doc.data() } as User);
+      });
+      setUsers(usersData);
+      return usersData;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch users');
+      toast.error('Failed to fetch users');
       throw error;
     } finally {
       setLoading(false);
@@ -90,15 +83,15 @@ export const useAdmin = () => {
   const fetchAccounts = async () => {
     try {
       setLoading(true);
-      const response = await makeAdminRequest('/api/admin/accounts');
-      if (!response.ok) {
-        throw new Error('Failed to fetch accounts');
-      }
-      const data = await response.json();
-      setAccounts(data);
-      return data;
+      const snapshot = await getDocs(collection(db, 'accounts'));
+      const accountsData: Account[] = [];
+      snapshot.forEach(doc => {
+        accountsData.push({ id: doc.id, ...doc.data() } as Account);
+      });
+      setAccounts(accountsData);
+      return accountsData;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch accounts');
+      toast.error('Failed to fetch accounts');
       throw error;
     } finally {
       setLoading(false);
@@ -108,15 +101,16 @@ export const useAdmin = () => {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const response = await makeAdminRequest('/api/admin/transactions');
-      if (!response.ok) {
-        throw new Error('Failed to fetch transactions');
-      }
-      const data = await response.json();
-      setTransactions(data);
-      return data;
+      const q = query(collection(db, 'transactions'), orderBy('createdAt', 'desc'), limit(100));
+      const snapshot = await getDocs(q);
+      const txData: Transaction[] = [];
+      snapshot.forEach(doc => {
+        txData.push({ id: doc.id, ...doc.data() } as Transaction);
+      });
+      setTransactions(txData);
+      return txData;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch transactions');
+      toast.error('Failed to fetch transactions');
       throw error;
     } finally {
       setLoading(false);
@@ -126,83 +120,78 @@ export const useAdmin = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await makeAdminRequest('/api/admin/stats');
-      if (!response.ok) {
-        throw new Error('Failed to fetch stats');
-      }
-      const data = await response.json();
-      setStats(data);
-      return data;
+      const [usersSnap, accountsSnap, txSnap] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'accounts')),
+        getDocs(query(collection(db, 'transactions'), orderBy('createdAt', 'desc'), limit(5)))
+      ]);
+
+      const usersData: any[] = [];
+      usersSnap.forEach(doc => usersData.push(doc.data()));
+
+      const accountsData: any[] = [];
+      accountsSnap.forEach(doc => accountsData.push(doc.data()));
+
+      const recentTx: Transaction[] = [];
+      txSnap.forEach(doc => recentTx.push({ id: doc.id, ...doc.data() } as Transaction));
+
+      const statsData: AdminStats = {
+        totalUsers: usersSnap.size,
+        totalAccounts: accountsSnap.size,
+        totalBalance: accountsData.reduce((sum, acc) => sum + (acc.balance || 0), 0),
+        pendingKYC: usersData.filter(u => u.kycStatus === 'pending').length,
+        totalTransactions: txSnap.size, // This is just a sample
+        recentTransactions: recentTx
+      };
+
+      setStats(statsData);
+      return statsData;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to fetch stats');
-      throw error;
+      console.error('Error fetching stats:', error);
+      toast.error('Failed to fetch stats');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateKYCStatus = async (userId: number, status: 'approved' | 'rejected') => {
+  const updateKYCStatus = async (userId: string, status: 'approved' | 'rejected') => {
     try {
-      const response = await makeAdminRequest(`/api/admin/users/${userId}/kyc`, {
-        method: 'PUT',
-        body: JSON.stringify({ status }),
+      await updateDoc(doc(db, 'users', userId), {
+        kycStatus: status,
+        updatedAt: serverTimestamp()
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update KYC status');
-      }
-      
-      const updatedUser = await response.json();
-      setUsers(users.map(u => u.id === userId ? updatedUser : u));
+      setUsers(users.map(u => u.id === userId ? { ...u, kycStatus: status } : u));
       toast.success(`KYC status updated to ${status}`);
-      return updatedUser;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update KYC status');
+      toast.error('Failed to update KYC status');
       throw error;
     }
   };
 
-  const updateUserRole = async (userId: number, role: 'user' | 'admin') => {
+  const updateUserRole = async (userId: string, role: 'user' | 'admin') => {
     try {
-      const response = await makeAdminRequest(`/api/admin/users/${userId}/role`, {
-        method: 'PUT',
-        body: JSON.stringify({ role }),
+      await updateDoc(doc(db, 'users', userId), {
+        role,
+        updatedAt: serverTimestamp()
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user role');
-      }
-      
-      const updatedUser = await response.json();
-      setUsers(users.map(u => u.id === userId ? updatedUser : u));
+      setUsers(users.map(u => u.id === userId ? { ...u, role } : u));
       toast.success(`User role updated to ${role}`);
-      return updatedUser;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update user role');
+      toast.error('Failed to update user role');
       throw error;
     }
   };
 
-  const updateAccountStatus = async (accountId: number, status: 'active' | 'inactive' | 'frozen') => {
+  const updateAccountStatus = async (accountId: string, status: 'active' | 'inactive' | 'frozen') => {
     try {
-      const response = await makeAdminRequest(`/api/admin/accounts/${accountId}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status }),
+      await updateDoc(doc(db, 'accounts', accountId), {
+        status,
+        updatedAt: serverTimestamp()
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update account status');
-      }
-      
-      const updatedAccount = await response.json();
-      setAccounts(accounts.map(a => a.id === accountId ? updatedAccount : a));
+      setAccounts(accounts.map(a => a.id === accountId ? { ...a, status } : a));
       toast.success(`Account status updated to ${status}`);
-      return updatedAccount;
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update account status');
+      toast.error('Failed to update account status');
       throw error;
     }
   };
@@ -221,4 +210,4 @@ export const useAdmin = () => {
     updateUserRole,
     updateAccountStatus,
   };
-};
+};

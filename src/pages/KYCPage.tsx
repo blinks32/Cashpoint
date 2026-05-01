@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Shield, Upload, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../lib/firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 interface KYCFormData {
   firstName: string;
@@ -39,17 +43,40 @@ const KYCPage = () => {
   }, [user, navigate]);
 
   const onSubmit = async (data: KYCFormData) => {
-    console.log('KYC Data:', data);
+    if (!user) return;
     
     setLoading(true);
     try {
-      await updateProfile({
-        kyc_data: data,
-        kyc_status: 'pending'
+      const fileUrls: {[key: string]: string} = {};
+      
+      // Upload files to Firebase Storage
+      for (const [fileType, file] of Object.entries(uploadedFiles)) {
+        const storageRef = ref(storage, `kyc/${user.id}/${fileType}_${Date.now()}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(snapshot.ref);
+        fileUrls[fileType] = url;
+      }
+
+      // Save KYC data and file URLs to Firestore
+      await updateDoc(doc(db, 'users', user.id), {
+        kycData: {
+          ...data,
+          documents: fileUrls
+        },
+        kycStatus: 'pending',
+        updatedAt: serverTimestamp()
       });
+
+      // Update local profile state
+      await updateProfile({
+        kycStatus: 'pending'
+      });
+
+      toast.success('KYC application submitted successfully!');
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('KYC submission error:', error);
+      toast.error('Failed to submit KYC application: ' + error.message);
     } finally {
       setLoading(false);
     }

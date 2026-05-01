@@ -4,12 +4,16 @@ import { DollarSign, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface NavbarProps {
-  isMenuOpen: boolean;
-  setIsMenuOpen: (open: boolean) => void;
+  isMenuOpen?: boolean;
+  setIsMenuOpen?: (open: boolean) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, setIsMenuOpen }) => {
+const Navbar: React.FC<NavbarProps> = ({ isMenuOpen: propIsMenuOpen, setIsMenuOpen: propSetIsMenuOpen }) => {
   const { user, signOut } = useAuth();
+  const [internalMenuOpen, setInternalMenuOpen] = React.useState(false);
+
+  const isMenuOpen = propIsMenuOpen !== undefined ? propIsMenuOpen : internalMenuOpen;
+  const setIsMenuOpen = propSetIsMenuOpen !== undefined ? propSetIsMenuOpen : setInternalMenuOpen;
 
   return (
     <nav className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">

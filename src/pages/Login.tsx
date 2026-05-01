@@ -5,10 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import EmailVerification from '../components/EmailVerification';
 import SecurityBadges from '../components/SecurityBadges';
 import toast from 'react-hot-toast';
-import { apiRequest } from '../config/api';
 
 const Login = () => {
-  const { user, setUserDirectly } = useAuth();
+  const { user, signIn } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
@@ -22,7 +21,11 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      if (user.role === 'admin' || user.role === 'super_admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     }
   }, [user, navigate]);
 
@@ -31,71 +34,15 @@ const Login = () => {
     
     setLoading(true);
     try {
-      const response = await apiRequest('/api/auth/signin', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Sign in failed');
-      }
-
-      if (data.requiresVerification) {
-        setPendingEmail(formData.email);
-        setShowVerification(true);
-        toast.success('Verification code sent to your email');
-      } else if (data.user) {
-        setUserDirectly(data.user);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        toast.success('Signed in successfully!');
-        navigate('/dashboard');
-      }
+      await signIn(formData.email, formData.password);
+      toast.success('Signed in successfully!');
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || 'Sign in failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify = async (code: string) => {
-    const response = await apiRequest('/api/auth/verify', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: pendingEmail,
-        code
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Verification failed');
-    }
-
-    setUserDirectly(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    toast.success('Signed in successfully!');
-    navigate('/dashboard');
-  };
-
-  const handleResend = async () => {
-    const response = await apiRequest('/api/auth/resend-code', {
-      method: 'POST',
-      body: JSON.stringify({ email: pendingEmail })
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.message || 'Failed to resend code');
-    }
-
-    toast.success('New verification code sent');
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -105,20 +52,6 @@ const Login = () => {
     }));
   };
 
-  if (showVerification) {
-    return (
-      <EmailVerification
-        email={pendingEmail}
-        onVerify={handleVerify}
-        onResend={handleResend}
-        onBack={() => {
-          setShowVerification(false);
-          setPendingEmail('');
-        }}
-        loading={loading}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-900 flex">
