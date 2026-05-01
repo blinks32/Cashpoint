@@ -24,6 +24,12 @@ interface User {
   firstName: string;
   lastName: string;
   phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  dateOfBirth?: string;
+  ssn?: string;
   createdAt: any;
   updatedAt: any;
   kycStatus: 'pending' | 'approved' | 'rejected' | 'none';
@@ -39,6 +45,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
   setUserDirectly: (user: User) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,15 +62,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchUserDoc = async (uid: string): Promise<User | null> => {
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (userDoc.exists()) {
+      return { id: uid, ...userDoc.data() } as User;
+    }
+    return null;
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Fetch additional user data from Firestore
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+        const userData = await fetchUserDoc(firebaseUser.uid);
+        if (userData) {
+          setUser(userData);
         } else {
-          // This might happen if user was created but doc failed
           setUser(null);
         }
       } else {
@@ -74,6 +87,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => unsubscribe();
   }, []);
+
+  const refreshUser = async () => {
+    if (auth.currentUser) {
+      const userData = await fetchUserDoc(auth.currentUser.uid);
+      if (userData) {
+        setUser(userData);
+      }
+    }
+  };
 
   const signUp = async (email: string, password: string, userData: any) => {
     try {
@@ -104,15 +126,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+
+      // Check if this is the designated admin email
+      const userRef = doc(db, 'users', uid);
+      const userDoc = await getDoc(userRef);
       
-      // Upgrade to admin if email matches admin@cashpoint.com
       if (email.toLowerCase() === 'admin@cashpoint.com') {
-        const userRef = doc(db, 'users', userCredential.user.uid);
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists() && userDoc.data().role !== 'admin') {
-          await updateDoc(userRef, { role: 'admin' });
+        if (userDoc.exists() && userDoc.data().role !== 'admin' && userDoc.data().role !== 'super_admin') {
+          await updateDoc(userRef, { role: 'admin', updatedAt: serverTimestamp() });
         } else if (!userDoc.exists()) {
-          // Create admin document if it doesn't exist
           await setDoc(userRef, {
             email,
             firstName: 'System',
@@ -123,6 +146,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             updatedAt: serverTimestamp()
           });
         }
+      }
+
+      // CRITICAL: Re-fetch user doc AFTER any role updates to avoid stale data
+      const freshUserData = await fetchUserDoc(uid);
+      if (freshUserData) {
+        setUser(freshUserData);
       }
       
       toast.success('Signed in successfully!');
@@ -139,9 +168,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const firebaseUser = userCredential.user;
 
       const userRef = doc(db, 'users', firebaseUser.uid);
-      const userDoc = await getDoc(userRef);
+      const userDocSnap = await getDoc(userRef);
 
-      if (!userDoc.exists()) {
+      if (!userDocSnap.exists()) {
         const newUser: Omit<User, 'id'> = {
           email: firebaseUser.email || '',
           firstName: firebaseUser.displayName?.split(' ')[0] || 'Google',
@@ -156,12 +185,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(userRef, newUser);
         setUser({ id: firebaseUser.uid, ...newUser } as User);
       } else {
-        setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
+        setUser({ id: firebaseUser.uid, ...userDocSnap.data() } as User);
       }
       
       toast.success('Signed in with Google successfully!');
     } catch (error: any) {
-      toast.error(error.message);
+      if (error.code !== 'auth/popup-closed-by-user') {
+        toast.error(error.message);
+      }
       throw error;
     }
   };
@@ -211,7 +242,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signInWithGoogle,
     signOut,
     updateProfile,
-    setUserDirectly
+    setUserDirectly,
+    refreshUser
   };
 
   return (
@@ -219,4 +251,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
+};

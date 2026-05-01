@@ -196,6 +196,34 @@ export const useAdmin = () => {
     }
   };
 
+  const updateUser = async (userId: string, data: Partial<User>) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+      setUsers(users.map(u => u.id === userId ? { ...u, ...data } : u));
+      toast.success('User updated successfully');
+    } catch (error: any) {
+      toast.error('Failed to update user');
+      throw error;
+    }
+  };
+
+  const updateAccountBalance = async (accountId: string, balance: number) => {
+    try {
+      await updateDoc(doc(db, 'accounts', accountId), {
+        balance,
+        updatedAt: serverTimestamp()
+      });
+      setAccounts(accounts.map(a => a.id === accountId ? { ...a, balance } : a));
+      toast.success('Account balance updated');
+    } catch (error: any) {
+      toast.error('Failed to update balance');
+      throw error;
+    }
+  };
+
   return {
     users,
     accounts,
@@ -209,5 +237,7 @@ export const useAdmin = () => {
     updateKYCStatus,
     updateUserRole,
     updateAccountStatus,
+    updateUser,
+    updateAccountBalance,
   };
 };

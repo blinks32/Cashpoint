@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   CreditCard,
@@ -20,16 +21,26 @@ import {
   History,
   Menu,
   X,
-  Shield
+  Shield,
+  User,
+  Copy,
+  CheckCircle,
+  Bell,
+  FileText,
+  Edit3,
+  Save
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
 import toast from 'react-hot-toast';
+import { collection, query, where, getDocs, getDoc, doc as firestoreDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut, updateProfile } = useAuth();
   const { accounts, loading: accountsLoading, createAccount } = useAccounts();
   const { transactions, loading: transactionsLoading, createTransaction, transferFunds } = useTransactions();
 
@@ -43,11 +54,81 @@ const Dashboard = () => {
   const [description, setDescription] = useState('');
   const [transferToAccount, setTransferToAccount] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [copiedField, setCopiedField] = useState('');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    firstName: '', lastName: '', phone: '', address: '', city: '', state: '', zipCode: ''
+  });
+  const [transferAccountNumber, setTransferAccountNumber] = useState('');
+  const [beneficiaryName, setBeneficiaryName] = useState('');
+  const [lookingUpBeneficiary, setLookingUpBeneficiary] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        phone: user.phone || '',
+        address: (user as any).address || '',
+        city: (user as any).city || '',
+        state: (user as any).state || '',
+        zipCode: (user as any).zipCode || ''
+      });
+    }
+  }, [user]);
 
   const totalBalance = accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
   const checkingAccount = accounts.find(acc => acc.accountType === 'checking');
   const savingsAccount = accounts.find(acc => acc.accountType === 'savings');
   const investmentAccount = accounts.find(acc => acc.accountType === 'investment');
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopiedField(''), 2000);
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      await updateProfile(profileForm);
+      setEditingProfile(false);
+    } catch (error) {
+      console.error('Profile update error:', error);
+    }
+  };
+
+  const lookupBeneficiary = async () => {
+    if (!transferAccountNumber || transferAccountNumber.length < 6) {
+      toast.error('Enter a valid account number');
+      return;
+    }
+    setLookingUpBeneficiary(true);
+    try {
+      const q = query(collection(db, 'accounts'), where('accountNumber', '==', transferAccountNumber));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        toast.error('Account not found');
+        setBeneficiaryName('');
+        return;
+      }
+      const accData = snap.docs[0].data();
+      const beneficiaryDoc = await getDoc(firestoreDoc(db, 'users', accData.userId));
+      if (beneficiaryDoc.exists()) {
+        const bd = beneficiaryDoc.data();
+        setBeneficiaryName(`${bd.firstName} ${bd.lastName}`);
+        setTransferToAccount(snap.docs[0].id);
+        toast.success('Beneficiary found');
+      } else {
+        setBeneficiaryName('Account Holder');
+        setTransferToAccount(snap.docs[0].id);
+      }
+    } catch (error) {
+      toast.error('Failed to look up account');
+    } finally {
+      setLookingUpBeneficiary(false);
+    }
+  };
 
   const handleDeposit = async () => {
     if (!selectedAccount || !amount || !description) {
@@ -151,6 +232,32 @@ const Dashboard = () => {
       case 'dashboard':
         return (
           <div className="space-y-4 lg:space-y-6">
+            {/* Welcome Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl lg:text-3xl font-bold text-white">
+                  Welcome back, {user?.firstName}
+                </h2>
+                <p className="text-gray-400 mt-1">
+                  {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                {user?.kycStatus !== 'approved' && (
+                  <button onClick={() => navigate('/kyc')}
+                    className="bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 px-4 py-2 rounded-lg text-sm hover:bg-yellow-400/20 transition-colors">
+                    Complete KYC
+                  </button>
+                )}
+                {accounts.length === 0 && (
+                  <button onClick={() => setActiveTab('accounts')}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-500 transition-colors flex items-center space-x-1">
+                    <Plus size={16} /><span>Open Account</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Account Overview Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
               <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 p-6 rounded-xl text-gray-900">
@@ -469,6 +576,161 @@ const Dashboard = () => {
           </div>
         );
 
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white">Profile & Settings</h2>
+
+            {/* Profile Card */}
+            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-yellow-400/20 to-yellow-600/10 p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center text-gray-900 text-2xl font-bold">
+                      {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">{user?.firstName} {user?.lastName}</h3>
+                      <p className="text-gray-400">{user?.email}</p>
+                      <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${
+                        user?.kycStatus === 'approved' ? 'bg-green-500/20 text-green-400' :
+                        user?.kycStatus === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}>
+                        KYC: {user?.kycStatus || 'Not submitted'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditingProfile(!editingProfile)}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                  >
+                    {editingProfile ? <X size={16} /> : <Edit3 size={16} />}
+                    <span>{editingProfile ? 'Cancel' : 'Edit'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">First Name</label>
+                    {editingProfile ? (
+                      <input value={profileForm.firstName} onChange={e => setProfileForm({...profileForm, firstName: e.target.value})}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                    ) : (
+                      <p className="text-white font-medium">{user?.firstName}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Last Name</label>
+                    {editingProfile ? (
+                      <input value={profileForm.lastName} onChange={e => setProfileForm({...profileForm, lastName: e.target.value})}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                    ) : (
+                      <p className="text-white font-medium">{user?.lastName}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Phone</label>
+                    {editingProfile ? (
+                      <input value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" placeholder="+1 (555) 000-0000" />
+                    ) : (
+                      <p className="text-white font-medium">{user?.phone || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Email</label>
+                    <p className="text-white font-medium">{user?.email}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-gray-400 mb-1">Address</label>
+                    {editingProfile ? (
+                      <input value={profileForm.address} onChange={e => setProfileForm({...profileForm, address: e.target.value})}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" placeholder="Street address" />
+                    ) : (
+                      <p className="text-white font-medium">{(user as any)?.address || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">City</label>
+                    {editingProfile ? (
+                      <input value={profileForm.city} onChange={e => setProfileForm({...profileForm, city: e.target.value})}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                    ) : (
+                      <p className="text-white font-medium">{(user as any)?.city || 'Not set'}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">State / ZIP</label>
+                    {editingProfile ? (
+                      <div className="flex space-x-2">
+                        <input value={profileForm.state} onChange={e => setProfileForm({...profileForm, state: e.target.value})}
+                          className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" placeholder="State" />
+                        <input value={profileForm.zipCode} onChange={e => setProfileForm({...profileForm, zipCode: e.target.value})}
+                          className="w-24 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white" placeholder="ZIP" />
+                      </div>
+                    ) : (
+                      <p className="text-white font-medium">{(user as any)?.state || ''} {(user as any)?.zipCode || 'Not set'}</p>
+                    )}
+                  </div>
+                </div>
+                {editingProfile && (
+                  <button onClick={handleSaveProfile}
+                    className="bg-yellow-400 text-gray-900 px-6 py-2 rounded-lg font-semibold hover:bg-yellow-300 transition-colors flex items-center space-x-2">
+                    <Save size={16} /><span>Save Changes</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Account Numbers */}
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+                <CreditCard size={20} className="text-yellow-400" /><span>Your Account Numbers</span>
+              </h3>
+              {accounts.length === 0 ? (
+                <p className="text-gray-400">No accounts yet. Create one from the Accounts tab.</p>
+              ) : (
+                <div className="space-y-3">
+                  {accounts.map(acc => (
+                    <div key={acc.id} className="flex items-center justify-between bg-gray-700 p-4 rounded-lg">
+                      <div>
+                        <p className="text-sm text-gray-400 capitalize">{acc.accountType} Account</p>
+                        <p className="text-white font-mono text-lg">{acc.accountNumber}</p>
+                        <p className="text-sm text-gray-400">Routing: 021000021</p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <p className="text-white font-semibold">${(acc.balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+                        <button onClick={() => copyToClipboard(acc.accountNumber, acc.id)}
+                          className="p-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors">
+                          {copiedField === acc.id ? <CheckCircle size={16} className="text-green-400" /> : <Copy size={16} className="text-gray-300" />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button onClick={() => navigate('/kyc')}
+                className="bg-gray-800 border border-gray-700 rounded-xl p-6 text-left hover:border-yellow-400/50 transition-colors">
+                <FileText size={24} className="text-yellow-400 mb-2" />
+                <h4 className="text-white font-semibold">KYC Verification</h4>
+                <p className="text-gray-400 text-sm">Submit identity documents for verification</p>
+              </button>
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                <Shield size={24} className="text-green-400 mb-2" />
+                <h4 className="text-white font-semibold">Security</h4>
+                <p className="text-gray-400 text-sm">256-bit encryption • FDIC insured</p>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -530,6 +792,15 @@ const Dashboard = () => {
             <History size={16} />
             <span className="text-sm">Transactions</span>
           </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg whitespace-nowrap transition-colors ${
+              activeTab === 'settings' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            <Settings size={16} />
+            <span className="text-sm">Settings</span>
+          </button>
         </div>
       </div>
 
@@ -570,6 +841,15 @@ const Dashboard = () => {
               >
                 <History size={20} />
                 <span>Transactions</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === 'settings' ? 'bg-yellow-400 text-gray-900' : 'text-gray-300 hover:bg-gray-700'
+                  }`}
+              >
+                <Settings size={20} />
+                <span>Settings</span>
               </button>
 
               <button
@@ -729,59 +1009,75 @@ const Dashboard = () => {
                   <option value="">Select source account</option>
                   {accounts.map((account) => (
                     <option key={account.id} value={account.id.toString()}>
-                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'} (${(account.balance || 0).toFixed(2)})
+                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - {account.accountNumber} (${(account.balance || 0).toFixed(2)})
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">To Account</label>
-                <select
-                  value={transferToAccount}
-                  onChange={(e) => setTransferToAccount(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                >
-                  <option value="">Select destination account</option>
-                  {accounts.filter(account => account.id.toString() !== selectedAccount).map((account) => (
-                    <option key={account.id} value={account.id.toString()}>
-                      {account.accountType?.charAt(0).toUpperCase() + account.accountType?.slice(1)} - ****{account.accountNumber?.slice(-4) || '0000'}
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Beneficiary Account Number</label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={transferAccountNumber}
+                    onChange={(e) => { setTransferAccountNumber(e.target.value); setBeneficiaryName(''); setTransferToAccount(''); }}
+                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    placeholder="Enter account number"
+                  />
+                  <button
+                    onClick={lookupBeneficiary}
+                    disabled={lookingUpBeneficiary}
+                    className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-medium hover:bg-yellow-300 transition-colors disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {lookingUpBeneficiary ? '...' : 'Verify'}
+                  </button>
+                </div>
+                {beneficiaryName && (
+                  <div className="mt-2 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-green-400 text-sm flex items-center space-x-1">
+                      <CheckCircle size={14} />
+                      <span>Beneficiary: <strong>{beneficiaryName}</strong></span>
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Amount</label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Narration</label>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                  placeholder="Enter description"
+                  placeholder="What is this transfer for?"
                 />
               </div>
             </div>
             <div className="flex space-x-3 mt-6">
               <button
-                onClick={() => setShowTransferModal(false)}
+                onClick={() => { setShowTransferModal(false); setBeneficiaryName(''); setTransferAccountNumber(''); }}
                 className="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-500 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleTransfer}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors"
+                disabled={!beneficiaryName || !transferToAccount}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Transfer
               </button>

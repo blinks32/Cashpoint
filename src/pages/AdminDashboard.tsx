@@ -87,13 +87,7 @@ const AdminDashboard = () => {
     userId: string;
   } | null>(null);
 
-  // Check if user is admin
-  useEffect(() => {
-    if (user && user.role !== 'admin' && user.role !== 'super_admin') {
-      toast.error('Access denied. Admin privileges required.');
-      navigate('/dashboard');
-    }
-  }, [user, navigate]);
+
 
   // Fetch admin data on component mount
   useEffect(() => {
