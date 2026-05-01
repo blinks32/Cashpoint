@@ -151,12 +151,6 @@ const LandingPage = () => {
                 >
                   Open Free Account
                 </Link>
-                <a 
-                  href="#accounts" 
-                  className="border border-gray-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-800 transition-all duration-300"
-                >
-                  Learn More
-                </a>
               </div>
               
               {/* Quick Stats */}
@@ -177,7 +171,7 @@ const LandingPage = () => {
             </div>
             
             {/* Hero Image/Card */}
-            <div className="hidden lg:block">
+            <div className="hidden lg:block pointer-events-none">
               <div className="relative">
                 {/* Floating Card */}
                 <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 border border-gray-700 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
@@ -197,7 +191,7 @@ const LandingPage = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-700/50 rounded-lg p-4">
                       <p className="text-gray-400 text-xs mb-1">Checking</p>
                       <p className="text-white font-semibold">$8,432.50</p>
@@ -206,15 +200,6 @@ const LandingPage = () => {
                       <p className="text-gray-400 text-xs mb-1">Savings (4.5% APY)</p>
                       <p className="text-white font-semibold">$16,149.50</p>
                     </div>
-                  </div>
-                  
-                  <div className="flex space-x-3">
-                    <button className="flex-1 bg-yellow-400 text-gray-900 py-3 rounded-lg font-medium hover:bg-yellow-300 transition-colors">
-                      Send Money
-                    </button>
-                    <button className="flex-1 bg-gray-700 text-white py-3 rounded-lg font-medium hover:bg-gray-600 transition-colors">
-                      Add Funds
-                    </button>
                   </div>
                 </div>
                 

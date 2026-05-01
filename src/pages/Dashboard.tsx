@@ -41,7 +41,7 @@ import { db } from '../lib/firebase';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut, updateProfile } = useAuth();
-  const { accounts, loading: accountsLoading } = useAccounts();
+  const { accounts, loading: accountsLoading, createAccount } = useAccounts();
   const { transactions, loading: transactionsLoading, createTransaction, transferFunds } = useTransactions();
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -455,6 +455,23 @@ const Dashboard = () => {
                 <h2 className="text-xl lg:text-2xl font-bold text-white">My Accounts</h2>
                 <p className="text-gray-400 text-sm">Manage your bank accounts and view balances</p>
               </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {!accounts.find(a => a.accountType === 'checking') && (
+                  <button onClick={() => createAccount('checking')} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-500 transition-colors flex items-center space-x-1">
+                    <Plus size={16} /><span>Checking</span>
+                  </button>
+                )}
+                {!accounts.find(a => a.accountType === 'savings') && (
+                  <button onClick={() => createAccount('savings')} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-500 transition-colors flex items-center space-x-1">
+                    <Plus size={16} /><span>Savings</span>
+                  </button>
+                )}
+                {!accounts.find(a => a.accountType === 'investment') && (
+                  <button onClick={() => createAccount('investment')} className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-500 transition-colors flex items-center space-x-1">
+                    <Plus size={16} /><span>Investment</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {accountsLoading ? (
@@ -465,7 +482,14 @@ const Dashboard = () => {
               <div className="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center">
                 <CreditCard size={48} className="text-gray-600 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-white mb-2">No Accounts Yet</h3>
-                <p className="text-gray-400 mb-4">Please contact support or visit a branch to open an account.</p>
+                <p className="text-gray-400 mb-6">Open your first checking account to start banking.</p>
+                <button
+                  onClick={() => createAccount('checking')}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-500 transition-colors inline-flex items-center space-x-2"
+                >
+                  <Plus size={20} />
+                  <span>Open Checking Account</span>
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">

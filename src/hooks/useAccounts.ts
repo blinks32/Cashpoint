@@ -57,6 +57,33 @@ export const useAccounts = () => {
     return () => unsubscribe();
   }, [user]);
 
+  const createAccount = async (accountType: 'checking' | 'savings' | 'investment') => {
+    try {
+      if (!user) throw new Error('No user logged in');
+
+      // Generate a realistic 10-digit account number based on type
+      const prefix = accountType === 'checking' ? '10' : accountType === 'savings' ? '20' : '30';
+      const accountNumber = prefix + Math.floor(Math.random() * 90000000 + 10000000).toString();
+
+      const newAccount: Omit<Account, 'id'> = {
+        userId: user.id,
+        accountType,
+        accountNumber,
+        balance: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        status: 'active'
+      };
+
+      const docRef = await addDoc(collection(db, 'accounts'), newAccount);
+      toast.success(`${accountType.charAt(0).toUpperCase() + accountType.slice(1)} account created!`);
+      return { id: docRef.id, ...newAccount };
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create account');
+      throw error;
+    }
+  };
+
   const updateBalance = async (accountId: string, newBalance: number) => {
     try {
       const accountRef = doc(db, 'accounts', accountId);
@@ -73,6 +100,7 @@ export const useAccounts = () => {
   return {
     accounts,
     loading,
+    createAccount,
     updateBalance
   };
 };
